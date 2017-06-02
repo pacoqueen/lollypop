@@ -128,6 +128,12 @@ class ContextWidget(Gtk.Grid):
                 edit.set_tooltip_text(_("Modify information"))
                 edit.set_margin_end(10)
                 edit.show()
+            # Open directory
+            opendir = HoverWidget('document-open',
+                                  self.__open_dir)
+            opendir.set_tooltip_text(_("Open directory"))
+            opendir.set_margin_end(10)
+            opendir.show()
 
         playlist = HoverWidget('view-list-symbolic',
                                self.__show_playlist_manager)
@@ -186,6 +192,7 @@ class ContextWidget(Gtk.Grid):
                 self.add(trash)
         elif can_launch:
             self.add(edit)
+        self.add(opendir)
         self.add(playlist)
         if isinstance(self.__object, Album):
             self.add(queue)
@@ -245,6 +252,42 @@ class ContextWidget(Gtk.Grid):
             print("You are missing lollypop-portal: "
                   "https://github.com/gnumdk/lollypop-portal", e)
         self.__button.emit('clicked')
+
+    def __open_dir(self, arguments):
+        """
+            Open folder in external file browser.
+            @param arguments
+        """
+        try:
+            path = GLib.filename_from_uri(self.__object.uri)[0]
+            try:
+                import os
+                from pydbus import SessionBus
+                bus = SessionBus()
+                fm = bus.get("org.freedesktop.FileManager1",
+                             "/org/freedesktop/FileManager1")
+                startup_id = "{}_TIME{}".format("LOLLYPOP",
+                                                Gtk.get_current_event_time())
+                uris = [self.__object.uri]
+                if os.path.isfile(path):
+                    fm.ShowItems(uris, startup_id)
+                else:
+                    fm.ShowFolders(uris, startup_id)
+            except ImportError:
+                # The hard way (aka just testing)
+                import subprocess
+                if os.path.isfile(path):
+                    comando = ['nautilus']
+                    strpath = os.path.abspath(os.path.dirname(path))
+                    args = [strpath, "-s", path]
+                else:
+                    comando = ['xdg-open']
+                    strpath = path
+                    args = [strpath]
+                comando += args
+                process = subprocess.run(comando)
+        except Exception as e:
+            print("EditMenu::__open_dir():", e)
 
     def __add_to_queue(self, args):
         """

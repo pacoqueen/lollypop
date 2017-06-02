@@ -355,6 +355,9 @@ class EditMenu(BaseMenu):
                 print("EditMenu::__init__():", e)
             if can_launch:
                 self.__set_edit_actions()
+            # Open directory
+            self.__set_opendir_actions()
+
 
 #######################
 # PRIVATE             #
@@ -379,6 +382,15 @@ class EditMenu(BaseMenu):
         Lp().add_action(edit_tag_action)
         edit_tag_action.connect('activate', self.__edit_tag)
         self.append(_("Modify information"), 'app.edit_tag_action')
+
+    def __set_opendir_actions(self):
+        """
+        Set open directory action.
+        """
+        open_dir_action = Gio.SimpleAction(name="open_dir_action")
+        Lp().add_action(open_dir_action)
+        open_dir_action.connect('activate', self.__open_dir)
+        self.append(_("Open directory"), 'app.open_dir_action')
 
     def __remove_object(self, action, variant):
         """
@@ -408,6 +420,43 @@ class EditMenu(BaseMenu):
                        500, None)
         except Exception as e:
             print("EditMenu::__edit_tag():", e)
+
+    def __open_dir(self, action, variant):
+        """
+            Open folder in external file browser.
+            @param SimpleAction
+            @param GVariant
+        """
+        try:
+            path = GLib.filename_from_uri(self._object.uri)[0]
+            try:
+                import os
+                from pydbus import SessionBus
+                bus = SessionBus()
+                fm = bus.get("org.freedesktop.FileManager1",
+                             "/org/freedesktop/FileManager1")
+                startup_id = "{}_TIME{}".format("LOLLYPOP",
+                                                Gtk.get_current_event_time())
+                uris = [self._object.uri]
+                if os.path.isfile(path):
+                    fm.ShowItems(uris, startup_id)
+                else:
+                    fm.ShowFolders(uris, startup_id)
+            except ImportError:
+                # The hard way (aka just testing)
+                import subprocess, os
+                if os.path.isfile(path):
+                    comando = ['nautilus']
+                    strpath = os.path.abspath(os.path.dirname(path))
+                    args = [strpath, "-s", path]
+                else:
+                    comando = ['xdg-open']
+                    strpath = path
+                    args = [strpath]
+                comando += args
+                process = subprocess.run(comando)
+        except Exception as e:
+            print("EditMenu::__open_dir():", e)
 
 
 class AlbumMenu(Gio.Menu):
