@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,7 +15,7 @@ from gi.repository import Gtk, GLib
 from gettext import gettext as _
 from threading import Thread
 
-from lollypop.define import Lp, OpenLink
+from lollypop.define import Lp, OpenLink, Type
 from lollypop.objects import Track
 from lollypop.utils import get_network_available
 from lollypop.widgets_info import WikipediaContent, LastfmContent
@@ -52,44 +52,61 @@ class InfoPopover(Gtk.Popover):
             InfoPopover.Wikipedia is not None or\
             InfoPopover.WebView is not None
 
-    def __init__(self, artist_ids=[], show_albums=True):
+    def __init__(self, artist_ids=[], view_type=Type.ALBUMS):
         """
             Init artist infos
-            @param artist id as int
-            @param show albums as bool
+            @param artist_ids as int
+            @param view_type as Type
         """
         Gtk.Popover.__init__(self)
         self.set_position(Gtk.PositionType.BOTTOM)
-        self.connect('map', self.__on_map)
-        self.connect('unmap', self.__on_unmap)
+        self.connect("map", self.__on_map)
+        self.connect("unmap", self.__on_unmap)
         self.__artist_ids = artist_ids
         self.__current_track = Track()
         self.__timeout_id = None
         self.__signal_id = None
 
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/ArtistInfo.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/ArtistInfo.ui")
         builder.connect_signals(self)
-        self.__lyrics_label = builder.get_object('lyrics_label')
-        self.__jump_button = builder.get_object('jump-button')
-        self.__stack = builder.get_object('stack')
-        self.add(builder.get_object('widget'))
-        if Lp().settings.get_value('inforeload'):
-            builder.get_object('reload').get_style_context().add_class(
-                                                                    'selected')
-        if show_albums:
-            self.__stack.get_child_by_name('albums').show()
-        if InfoPopover.Wikipedia is not None:
-            builder.get_object('scrollwikipedia').show()
+        self.__lyrics_label = builder.get_object("lyrics_label")
+        self.__jump_button = builder.get_object("jump-button")
+        self.__stack = builder.get_object("stack")
+        self.add(builder.get_object("widget"))
+        if Lp().settings.get_value("inforeload"):
+            builder.get_object("reload").get_style_context().add_class(
+                                                                    "selected")
+
+    def set_view_type(self, view_type):
+        """
+            Set current view type
+            @param view_type as Type
+        """
+        if view_type == Type.ALBUMS:
+            self.__stack.get_child_by_name("albums").show()
+        else:
+            self.__stack.get_child_by_name("albums").hide()
+        show_bio = view_type != Type.RADIOS
+        if InfoPopover.Wikipedia is not None and show_bio:
+            self.__stack.get_child_by_name("wikipedia").show()
+        else:
+            self.__stack.get_child_by_name("wikipedia").hide()
         if Lp().lastfm is not None and\
-                not Lp().settings.get_value('use-librefm'):
-            builder.get_object('scrolllastfm').show()
+                not Lp().settings.get_value("use-librefm") and show_bio:
+            self.__stack.get_child_by_name("lastfm").show()
+        else:
+            self.__stack.get_child_by_name("lastfm").hide()
         if InfoPopover.WebView is not None and get_network_available():
-            builder.get_object('scrollduck').show()
-        if not artist_ids:
-            builder.get_object('scrolllyrics').show()
+            self.__stack.get_child_by_name("duck").show()
+        else:
+            self.__stack.get_child_by_name("duck").hide()
+        if not self.__artist_ids:
+            self.__stack.get_child_by_name("lyrics").show()
+        else:
+            self.__stack.get_child_by_name("lyrics").hide()
         self.__stack.set_visible_child_name(
-            Lp().settings.get_value('infoswitch').get_string())
+            Lp().settings.get_value("infoswitch").get_string())
 
 #######################
 # PROTECTED           #
@@ -113,7 +130,7 @@ class InfoPopover(Gtk.Popover):
             self.__timeout_id = None
             visible_name = self.__stack.get_visible_child_name()
             # Clear cache if needed
-            if visible_name in ['lastfm', 'wikipedia']:
+            if visible_name in ["lastfm", "wikipedia"]:
                 for artist in self.__current_track.artists:
                     InfoCache.remove(artist, visible_name)
                 # stack -> scrolled -> viewport -> grid
@@ -139,12 +156,12 @@ class InfoPopover(Gtk.Popover):
         self.__jump_button.show()
         if self.__current_track.id is None:
             self.__current_track = Lp().player.current_track
-        Lp().settings.set_value('infoswitch',
-                                GLib.Variant('s', 'albums'))
+        Lp().settings.set_value("infoswitch",
+                                GLib.Variant("s", "albums"))
         view = widget.get_child_at(0, 0)
         if view is None:
             view = CurrentArtistAlbumsView()
-            view.set_property('expand', True)
+            view.set_property("expand", True)
             view.show()
             widget.add(view)
         t = Thread(target=view.populate, args=(self.__current_track,))
@@ -166,8 +183,8 @@ class InfoPopover(Gtk.Popover):
             return
         self._on_child_unmap(widget)
         self.__jump_button.hide()
-        Lp().settings.set_value('infoswitch',
-                                GLib.Variant('s', 'lastfm'))
+        Lp().settings.set_value("infoswitch",
+                                GLib.Variant("s", "lastfm"))
         if self.__artist_ids:
             artists = []
             for artist_id in self.__artist_ids:
@@ -197,8 +214,8 @@ class InfoPopover(Gtk.Popover):
             return
         self._on_child_unmap(widget)
         self.__jump_button.hide()
-        Lp().settings.set_value('infoswitch',
-                                GLib.Variant('s', 'wikipedia'))
+        Lp().settings.set_value("infoswitch",
+                                GLib.Variant("s", "wikipedia"))
         if self.__artist_ids:
             artists = []
             for artist_id in self.__artist_ids:
@@ -219,9 +236,8 @@ class InfoPopover(Gtk.Popover):
             Load on map
             @param widget as Gtk.Viewport
         """
-        self._on_child_unmap(widget)
-        Lp().settings.set_value('infoswitch',
-                                GLib.Variant('s', 'lyrics'))
+        Lp().settings.set_value("infoswitch",
+                                GLib.Variant("s", "lyrics"))
         self.__jump_button.hide()
         if self.__current_track.id is None:
             self.__current_track = Lp().player.current_track
@@ -238,6 +254,8 @@ class InfoPopover(Gtk.Popover):
             lyrics = reader.get_lyrics(tags)
         if lyrics or InfoPopover.WebView is None\
                 or not get_network_available():
+            # Destroy previous widgets
+            self._on_child_unmap(widget)
             label = Gtk.Label()
             label.set_vexpand(True)
             label.set_hexpand(True)
@@ -249,31 +267,43 @@ class InfoPopover(Gtk.Popover):
                 label.set_label(lyrics)
             elif not get_network_available():
                 string = GLib.markup_escape_text(_("Network access disabled"))
-                label.get_style_context().add_class('dim-label')
+                label.get_style_context().add_class("dim-label")
                 label.set_markup(
-                       "<span font_weight='bold' size='xx-large'>" +
+                       '<span font_weight="bold" size="xx-large">' +
                        string +
                        "</span>")
             else:
                 string = GLib.markup_escape_text(
                        _("No lyrics found, please install gir1.2-webkit2-4.0"))
-                label.get_style_context().add_class('dim-label')
+                label.get_style_context().add_class("dim-label")
                 label.set_markup(
-                       "<span font_weight='bold' size='xx-large'>" +
+                       '<span font_weight="bold" size="xx-large">' +
                        string +
                        "</span>")
         elif get_network_available():
-            artists = ", ".join(Lp().player.current_track.artists)
             title = self.__current_track.name
-            search = GLib.uri_escape_string(artists + " " + title, None, True)
+            if self.__current_track.id == Type.RADIOS:
+                search = GLib.uri_escape_string(title, None, True)
+            else:
+                artists = ", ".join(Lp().player.current_track.artists)
+                search = GLib.uri_escape_string(artists + " " + title,
+                                                None, True)
             url = "http://genius.com/search?q=%s" % search
-            # Delayed load due to WebKit memory loading and Gtk animation
-            web = self.WebView(True, True)
-            web.add_word('search')
-            web.add_word('lyrics')
-            web.show()
-            widget.add(web)
-            GLib.timeout_add(250, web.load, url, OpenLink.OPEN)
+            # If we do not have a webview in children, create a new one
+            # Else load url
+            children = widget.get_children()
+            if not children or not isinstance(children[0], self.WebView):
+                # Destroy previous widgets
+                self._on_child_unmap(widget)
+                web = self.WebView(True, True)
+                web.add_word("search")
+                web.add_word("lyrics")
+                web.show()
+                widget.add(web)
+                # Delayed load due to WebKit memory loading and Gtk animation
+                GLib.timeout_add(250, web.load, url, OpenLink.NEW)
+            elif url != children[0].url:
+                children[0].load(url, OpenLink.NEW)
 
     def _on_map_duck(self, widget):
         """
@@ -284,24 +314,35 @@ class InfoPopover(Gtk.Popover):
         self.__jump_button.hide()
         if self.__current_track.id is None:
             self.__current_track = Lp().player.current_track
-        Lp().settings.set_value('infoswitch',
-                                GLib.Variant('s', 'duck'))
+        Lp().settings.set_value("infoswitch",
+                                GLib.Variant("s", "duck"))
         if self.__artist_ids:
             artists = []
             for artist_id in self.__artist_ids:
                 artists.append(Lp().artists.get_name(artist_id))
             search = ", ".join(artists)
         else:
-            title = self.__current_track.name
-            artists = ", ".join(Lp().player.current_track.artists)
-            search = "%s+%s" % (artists, title)
+            if self.__current_track.id == Type.RADIOS:
+                search = self.__current_track.name
+            else:
+                title = self.__current_track.name
+                artists = ", ".join(Lp().player.current_track.artists)
+                search = "%s+%s" % (artists, title)
         url = "https://duckduckgo.com/?q=%s&kl=%s&kd=-1&k5=2&kp=1&k1=-1"\
               % (search, Gtk.get_default_language().to_string())
-        # Delayed load due to WebKit memory loading and Gtk animation
-        web = self.WebView(False, True)
-        web.show()
-        widget.add(web)
-        GLib.timeout_add(250, web.load, url, OpenLink.NEW)
+        # If we do not have a webview in children, create a new one
+        # Else load url
+        children = widget.get_children()
+        if not children or not isinstance(children[0], self.WebView):
+            # Destroy previous widgets
+            self._on_child_unmap(widget)
+            web = self.WebView(False, True)
+            web.show()
+            widget.add(web)
+            # Delayed load due to WebKit memory loading and Gtk animation
+            GLib.timeout_add(250, web.load, url, OpenLink.NEW)
+        elif url != children[0].url:
+            children[0].load(url, OpenLink.NEW)
 
     def _on_child_unmap(self, widget):
         """
@@ -323,16 +364,16 @@ class InfoPopover(Gtk.Popover):
         """
         self.__timeout_id = None
         if self.__signal_id is None:
-            Lp().settings.set_value('inforeload', GLib.Variant('b', True))
-            self.__signal_id = Lp().player.connect('current-changed',
+            Lp().settings.set_value("inforeload", GLib.Variant("b", True))
+            self.__signal_id = Lp().player.connect("current-changed",
                                                    self.__on_current_changed)
-            widget.get_style_context().add_class('selected')
+            widget.get_style_context().add_class("selected")
         else:
             Lp().player.disconnect(self.__signal_id)
             self.__signal_id = None
-            Lp().settings.set_value('inforeload',
-                                    GLib.Variant('b', False))
-            widget.get_style_context().remove_class('selected')
+            Lp().settings.set_value("inforeload",
+                                    GLib.Variant("b", False))
+            widget.get_style_context().remove_class("selected")
 
     def __on_current_changed(self, player):
         """
@@ -349,7 +390,7 @@ class InfoPopover(Gtk.Popover):
         else:
             # stack -> scrolled -> viewport -> grid
             visible = self.__stack.get_visible_child().get_child().get_child()
-        getattr(self, '_on_map_%s' % name)(visible)
+        getattr(self, "_on_map_%s" % name)(visible)
 
     def __on_map(self, widget):
         """
@@ -359,8 +400,8 @@ class InfoPopover(Gtk.Popover):
         size = Lp().window.get_size()
         self.set_size_request(size[0]*0.6,
                               size[1]*0.7)
-        if Lp().settings.get_value('inforeload'):
-            self.__signal_id = Lp().player.connect('current-changed',
+        if Lp().settings.get_value("inforeload"):
+            self.__signal_id = Lp().player.connect("current-changed",
                                                    self.__on_current_changed)
 
     def __on_unmap(self, widget):

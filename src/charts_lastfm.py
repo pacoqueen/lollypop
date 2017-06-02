@@ -13,22 +13,22 @@
 from gi.repository import Gio
 
 from time import sleep
-from locale import getdefaultlocale
-from csv import reader
+import json
 
-from lollypop.search_spotify import SpotifySearch
+from lollypop.search_network import NetworkSearch
 from lollypop.web import Web
 from lollypop.define import DbPersistent, Lp, Type
 from lollypop.utils import debug, get_network_available
 from lollypop.lio import Lio
 
 
-class SpotifyCharts:
+class LastfmCharts:
     """
         Spotify charts
     """
 
-    __ALL = "https://spotifycharts.com/regional/%s/weekly/latest/download"
+    __ALL = "http://ws.audioscrobbler.com/2.0/?method=chart.gettoptracks"\
+            "&api_key=7a9619a850ccf7377c46cf233c51e3c6&format=json"
 
     def __init__(self, time):
         """
@@ -66,8 +66,7 @@ class SpotifyCharts:
         sleep(5)
         if self._stop:
             return
-        language = getdefaultlocale()[0][0:2]
-        self.__update_for_url(self.__ALL % language)
+        self.__update_for_url(self.__ALL)
 
     def __update_for_url(self, url):
         """
@@ -76,52 +75,54 @@ class SpotifyCharts:
         """
         if not get_network_available():
                 return
-        debug("SpotifyCharts::__update_for_url(): %s" % (url))
+        debug("LastfmCharts::__update_for_url(): %s" % (url))
         ids = self.__get_ids(url)
-        web = Web()
-        search = SpotifySearch()
         position = len(ids)
         while ids:
             sleep(10)
-            track_id = ids.pop(0)
-            album = search.get_track(track_id)
+            (track_name, artist_name) = ids.pop(0)
+            search = NetworkSearch()
+            search.connect("item-found", self.__on_item_found, position)
+            search.do_tracks(track_name + " " + artist_name)
             if self.__stop:
                 return
-            if album is None or not album.subitems:
-                position -= 1
-                continue
-            for item in album.subitems:
-                item.mtime = self.__time + position
-            debug("SpotifyCharts::__update_for_url(): %s - %s - %s" % (
-                                                                album.name,
-                                                                album.artists,
-                                                                track_id))
-            web.save_album_thread(album, DbPersistent.CHARTS, [Type.SPOTIFY])
             position -= 1
 
     def __get_ids(self, url):
         """
-            Get track spotify ids
+            Get album itunes ids
             @param url as str
+            @return [(track name, artist name)] as [(str, str)]
         """
-        ids = []
+        items = []
         try:
             f = Lio.File.new_for_uri(url)
             (status, data, tag) = f.load_contents(self.__cancel)
-            if not status or self._stop:
+            if not status or self.__stop:
                 return []
-            for line in data.decode("utf-8").split("\n"):
-                try:  # CSV file is mostly broken
-                    for row in reader([line]):
-                        if not row:
-                            continue
-                        url = row[4]
-                        if url == "URL":
-                            continue
-                        track_id = url.split("/")[-1:][0]
-                        ids.append(track_id)
-                except Exception as e:
-                    print(e)
+            decode = json.loads(data.decode("utf-8"))
+            for entry in decode["tracks"]["track"]:
+                track = entry["name"]
+                artist = entry["artist"]["name"]
+                items.append((track, artist))
         except Exception as e:
-            print("SpotifyCharts::__get_ids:", e)
-        return ids
+            print("LastfmCharts::__get_ids:", e)
+        return items
+
+    def __on_item_found(self, search, position):
+        """
+            Get track from search
+            @param search as NetworkSearch
+            @param position as int
+        """
+        if search.items:
+            item = search.items[0]
+            if item.is_track:
+                debug("LastfmCharts::__on_item_found(): %s - %s" % (
+                                                                item.name,
+                                                                item.artists))
+                search.stop()
+                search.disconnect_by_func(self.__on_item_found)
+                item.mtime = self.__time + position
+                web = Web()
+                web.save_track(item, DbPersistent.CHARTS, [Type.LASTFM])

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -10,13 +10,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import TotemPlParser, Gst
+from gi.repository import TotemPlParser, Gst, Gio
 
 from lollypop.radios import Radios
 from lollypop.player_base import BasePlayer
 from lollypop.define import Type
 from lollypop.objects import Track
-from lollypop.utils import get_network_available
 
 
 class RadioPlayer(BasePlayer):
@@ -41,7 +40,7 @@ class RadioPlayer(BasePlayer):
             Load radio at uri
             @param track as Track
         """
-        if get_network_available():
+        if Gio.NetworkMonitor.get_default().get_network_available():
             try:
                 self.__current = track
                 parser = TotemPlParser.Parser.new()
@@ -53,7 +52,7 @@ class RadioPlayer(BasePlayer):
             if self.is_party:
                 self.set_party(False)
             self._next_track = Track()
-            self.emit('next-changed')
+            self.emit("next-changed")
 
     def next(self):
         """
@@ -122,14 +121,14 @@ class RadioPlayer(BasePlayer):
         """
         self._plugins.volume.props.volume = 1.0
         self._playbin.set_state(Gst.State.NULL)
-        self._playbin.set_property('uri', track.uri)
+        self._playbin.set_property("uri", track.uri)
         Radios().set_more_popular(track.album_artists[0])
         self._current_track = track
         self.__current = None
         self._playbin.set_state(Gst.State.PLAYING)
         if not self.__radios:
             self.__radios = Radios().get()
-        self.emit('status-changed')
+        self.emit("status-changed")
 
     def __on_parse_finished(self, parser, result, track):
         """

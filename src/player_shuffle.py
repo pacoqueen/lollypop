@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -11,6 +11,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import random
+from threading import Thread
 
 from lollypop.define import Shuffle, NextContext, Lp, Type
 from lollypop.player_base import BasePlayer
@@ -29,10 +30,10 @@ class ShufflePlayer(BasePlayer):
             Init shuffle player
         """
         BasePlayer.__init__(self)
-        self.reset_history()
         # Party mode
         self.__is_party = False
-        Lp().settings.connect('changed::shuffle', self.__set_shuffle)
+        self.reset_history()
+        Lp().settings.connect("changed::shuffle", self.__set_shuffle)
 
     def reset_history(self):
         """
@@ -46,6 +47,10 @@ class ShufflePlayer(BasePlayer):
         self.__already_played_albums = []
         # Tracks already played for albums
         self.__already_played_tracks = {}
+        # If we have tracks/albums to ignore in party mode, add them
+        t = Thread(target=self.__init_party_blacklist)
+        t.daemon = True
+        t.start()
         # Reset user playlist
         self._user_playlist = []
         self._user_playlist_ids = []
@@ -99,7 +104,7 @@ class ShufflePlayer(BasePlayer):
             Return party ids
             @return [ids as int]
         """
-        party_settings = Lp().settings.get_value('party-ids')
+        party_settings = Lp().settings.get_value("party-ids")
         ids = []
         genre_ids = Lp().genres.get_ids()
         genre_ids.append(Type.POPULARS)
@@ -148,7 +153,7 @@ class ShufflePlayer(BasePlayer):
                 self._albums.insert(0, self._current_track.album.id)
             self.set_next()
             self.set_prev()
-        self.emit('party-changed', party)
+        self.emit("party-changed", party)
 
     @property
     def is_party(self):
@@ -237,7 +242,7 @@ class ShufflePlayer(BasePlayer):
             Set shuffle mode to gettings value
             @param settings as Gio.Settings, value as str
         """
-        self._shuffle = Lp().settings.get_enum('shuffle')
+        self._shuffle = Lp().settings.get_enum("shuffle")
 
         if self._plugins1.rgvolume is not None and\
            self._plugins2.rgvolume is not None:
@@ -291,7 +296,7 @@ class ShufflePlayer(BasePlayer):
                    track not in self.__already_played_tracks[album_id]:
                     return track
             # No new tracks for this album, remove it
-            # If albums not in shuffle history, it's not present
+            # If albums not in shuffle history, it"s not present
             # in db anymore (update since shuffle set)
             if album_id in self.__already_played_tracks.keys():
                 self.__already_played_tracks.pop(album_id)
@@ -309,3 +314,12 @@ class ShufflePlayer(BasePlayer):
             self.__already_played_tracks[track.album_id] = []
         if track.id not in self.__already_played_tracks[track.album_id]:
             self.__already_played_tracks[track.album_id].append(track.id)
+
+    def __init_party_blacklist(self):
+        """
+            Add party mode blacklist to already played tracks
+        """
+        if self.__is_party:
+            for track_id in Lp().playlists.get_track_ids(Type.NOPARTY):
+                track = Track(track_id)
+                self.__add_to_shuffle_history(track)

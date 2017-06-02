@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -13,7 +13,7 @@
 from gi.repository import Gtk
 
 from lollypop.view_artist_albums import ArtistAlbumsView
-from lollypop.define import Lp
+from lollypop.define import Lp, ArtSize
 
 
 class AlbumPopover(Gtk.Popover):
@@ -23,7 +23,7 @@ class AlbumPopover(Gtk.Popover):
     """
 
     def __init__(self, album_id, genre_ids,
-                 artist_ids, width=None, height=None, show_cover=True):
+                 artist_ids, width=None, height=None, art_size=ArtSize.NONE):
         """
             Init popover
             @param album id as int
@@ -31,11 +31,11 @@ class AlbumPopover(Gtk.Popover):
             @param artist ids as [int]
             @param width as int (None)
             @param height as int (None)
-            @param show cover as bool
+            @param art size as int
         """
         Gtk.Popover.__init__(self)
-        self.get_style_context().add_class('box-shadow')
-        view = ArtistAlbumsView(artist_ids, genre_ids, show_cover)
+        self.get_style_context().add_class("box-shadow")
+        view = ArtistAlbumsView(artist_ids, genre_ids, art_size)
         view.populate([album_id])
 
         # Get width/height from main window if None
@@ -48,7 +48,7 @@ class AlbumPopover(Gtk.Popover):
         # Get height requested by child
         requested_height = view.children[0].requested_height
         wanted_height = min(400, min(height, requested_height))
-        view.set_property('height-request', wanted_height)
+        view.set_property("height-request", wanted_height)
         view.show()
         self.add(view)
 

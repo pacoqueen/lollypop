@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,14 +15,14 @@ from gettext import gettext as _
 import itertools
 
 from lollypop.sqlcursor import SqlCursor
-from lollypop.define import Lp, Type
-from lollypop.utils import noaccents
+from lollypop.define import Lp, Type, DbPersistent
+from lollypop.utils import noaccents, get_network_available
 
 
 class TracksDatabase:
     """
         All functions take a sqlite cursor as last parameter,
-        set another one if you're in a thread
+        set another one if you"re in a thread
     """
 
     def __init__(self):
@@ -31,8 +31,9 @@ class TracksDatabase:
         """
         pass
 
-    def add(self, name, uri, duration, tracknumber, discnumber, discname,
-            album_id, year, popularity, rate, ltime, mtime, persistent=1):
+    def add(self, name, uri, duration, tracknumber, discnumber,
+            discname, album_id, year, popularity, rate, ltime,
+            persistent=DbPersistent.INTERNAL):
         """
             Add a new track to database
             @param name as string
@@ -47,7 +48,6 @@ class TracksDatabase:
             @param popularity as int
             @param rate as int
             @param ltime as int
-            @param mtime as int
             @param persistent as int
             @return inserted rowid as int
             @warning: commit needed
@@ -56,8 +56,8 @@ class TracksDatabase:
             result = sql.execute(
                 "INSERT INTO tracks (name, uri, duration, tracknumber,\
                 discnumber, discname, album_id,\
-                year, popularity, rate, ltime, mtime, persistent) VALUES\
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+                year, popularity, rate, ltime, persistent) VALUES\
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
                                                         name,
                                                         uri,
                                                         duration,
@@ -69,7 +69,6 @@ class TracksDatabase:
                                                         popularity,
                                                         rate,
                                                         ltime,
-                                                        mtime,
                                                         persistent))
             return result.lastrowid
 
@@ -87,19 +86,32 @@ class TracksDatabase:
                             "track_artists (track_id, artist_id)"
                             "VALUES (?, ?)", (track_id, artist_id))
 
-    def add_genre(self, track_id, genre_id):
+    def add_genre(self, track_id, genre_id, mtime):
         """
             Add genre to track
             @param track id as int
             @param genre id as int
+            @param mtime as int
             @warning: commit needed
         """
         with SqlCursor(Lp().db) as sql:
-            genres = self.get_genre_ids(track_id)
-            if genre_id not in genres:
-                sql.execute("INSERT INTO "
-                            "track_genres (track_id, genre_id)"
-                            "VALUES (?, ?)", (track_id, genre_id))
+            # Check if already exists:
+            result = sql.execute("SELECT mtime FROM track_genres\
+                                  WHERE track_id=? AND genre_id=?",
+                                 (track_id, genre_id))
+            v = result.fetchone()
+            if v is not None:
+                sql.execute("UPDATE track_genres\
+                             SET mtime=?\
+                             WHERE track_id=? AND genre_id=?",
+                            (mtime, track_id, genre_id))
+            else:
+                genres = self.get_genre_ids(track_id)
+                if genre_id not in genres:
+                    sql.execute("INSERT INTO\
+                                 track_genres (track_id, genre_id, mtime)\
+                                 VALUES (?, ?, ?)",
+                                (track_id, genre_id, mtime))
 
     def del_genres(self, track_id):
         """
@@ -118,19 +130,8 @@ class TracksDatabase:
         """
         with SqlCursor(Lp().db) as sql:
             result = sql.execute("SELECT rowid FROM tracks\
-                                  WHERE mtime>1")
-            return list(itertools.chain(*result))
-
-    def get_charts(self):
-        """
-            Return all internal track ids
-            @return track ids as [int]
-        """
-        with SqlCursor(Lp().db) as sql:
-            result = sql.execute("SELECT tracks.rowid\
-                                  FROM tracks, track_genres\
-                                  WHERE tracks.rowid=track_genres.track_id\
-                                  AND track_genres.genre_id=?", (Type.CHARTS,))
+                                  WHERE persistent=?",
+                                 (DbPersistent.INTERNAL,))
             return list(itertools.chain(*result))
 
     def get_ids_for_name(self, name):
@@ -144,6 +145,40 @@ class TracksDatabase:
                                   FROM tracks WHERE name=?\
                                   COLLATE NOCASE COLLATE LOCALIZED",
                                  (name,))
+            return list(itertools.chain(*result))
+
+    def get_charts_ids(self, genre_ids=[]):
+        """
+            Get charts track ids
+            @param genre ids as [int]
+            @return albums ids as [int]
+        """
+        result = []
+        order = " ORDER BY mtime DESC,\
+                 artists.sortname\
+                 COLLATE NOCASE COLLATE LOCALIZED,\
+                 tracks.year,\
+                 tracks.name\
+                 COLLATE NOCASE COLLATE LOCALIZED"
+        with SqlCursor(Lp().db) as sql:
+            filters = tuple([Type.CHARTS] + genre_ids)
+            request = "SELECT DISTINCT tracks.rowid FROM tracks,\
+                       track_genres, artists, track_artists\
+                       WHERE EXISTS (\
+                            SELECT track_genres.track_id\
+                            FROM track_genres\
+                            WHERE tracks.rowid = track_genres.track_id\
+                            AND track_genres.genre_id=?)\
+                       AND artists.rowid=track_artists.artist_id\
+                       AND tracks.rowid=track_artists.track_id\
+                       AND track_genres.track_id=tracks.rowid AND ("
+            for genre_id in genre_ids:
+                request += "track_genres.genre_id=? OR "
+            request += "1=0)"
+            if not get_network_available():
+                request += " AND tracks.persistent=%s" % DbPersistent.NONE
+            request += order
+            result = sql.execute(request, filters)
             return list(itertools.chain(*result))
 
     def get_id_by_uri(self, uri):
@@ -160,7 +195,7 @@ class TracksDatabase:
                 return v[0]
             return None
 
-    def get_id_by(self, name, album_id):
+    def get_id_by(self, name, album_id, artist_ids):
         """
             Return track id for uri
             @param name as str
@@ -168,10 +203,19 @@ class TracksDatabase:
             @return track id as int
         """
         with SqlCursor(Lp().db) as sql:
-            result = sql.execute("SELECT rowid FROM tracks\
-                                  WHERE name = ?\
-                                  AND album_id = ?",
-                                 (name, album_id))
+            filters = (name, album_id) + tuple(artist_ids)
+            request = "SELECT tracks.rowid FROM tracks\
+                       WHERE name = ? COLLATE NOCASE\
+                       AND album_id = ?\
+                       AND EXISTS (\
+                            SELECT rowid\
+                            FROM track_artists\
+                            WHERE track_artists.track_id=tracks.rowid\
+                            AND ("
+            for artist_id in artist_ids:
+                request += " track_artists.artist_id=? OR"
+            request += " 1=0))"
+            result = sql.execute(request, filters)
             v = result.fetchone()
             if v is not None:
                 return v[0]
@@ -235,7 +279,7 @@ class TracksDatabase:
 
     def set_uri(self, track_id, uri):
         """
-            Set track uri
+            Set track uri, reset duration if web uri
             @param Track id as int
             @param uri as string
         """
@@ -244,7 +288,8 @@ class TracksDatabase:
                          WHERE rowid=?",
                         (uri, track_id))
             sql.commit()
-            Lp().tracks.set_mtime(track_id, 0)
+            if uri.startswith("http") or uri.startswith("https"):
+                self.set_duration(track_id, 0)
 
     def set_rate(self, track_id, rate):
         """
@@ -344,7 +389,11 @@ class TracksDatabase:
         """
         with SqlCursor(Lp().db) as sql:
             mtimes = {}
-            result = sql.execute("SELECT uri, mtime FROM tracks")
+            result = sql.execute("SELECT DISTINCT tracks.uri, TG.mtime\
+                                  FROM tracks, track_genres AS TG\
+                                  WHERE tracks.rowid=TG.track_id\
+                                  AND tracks.persistent=?",
+                                 (DbPersistent.INTERNAL,))
             for row in result:
                 mtimes.update((row,))
             return mtimes
@@ -356,13 +405,12 @@ class TracksDatabase:
             @return Array of uri as string
         """
         with SqlCursor(Lp().db) as sql:
-            filters = ()
+            filters = (DbPersistent.INTERNAL,)
             for e in exclude:
-                filters += ('%' + e + '%',)
-            request = "SELECT uri FROM tracks"
-            if exclude:
-                request += " WHERE uri not like ?"
-            for e in exclude[1:]:
+                filters += ("%" + e + "%",)
+            request = "SELECT uri FROM tracks\
+                       WHERE persistent=?"
+            for e in exclude:
                 request += " AND uri not like ?"
             result = sql.execute(request, filters)
             return list(itertools.chain(*result))
@@ -420,7 +468,7 @@ class TracksDatabase:
 
     def get_as_non_album_artist(self, artist_id):
         """
-            Get tracks for artist_id where artist_id isn't main artist
+            Get tracks for artist_id where artist_id isn"t main artist
             @param artist id as int
             @return list of [tracks id as int, track name as string]
         """
@@ -579,32 +627,6 @@ class TracksDatabase:
                                   WHERE persistent=0")
             return list(itertools.chain(*result))
 
-    def get_old_from_charts(self, limit):
-        """
-            Return old tracks from charts
-            @param limit as int
-            @return track ids as [int]
-        """
-        with SqlCursor(Lp().db) as sql:
-            # Get charts album count
-            result = sql.execute("SELECT COUNT(DISTINCT(album_id))\
-                                  FROM tracks\
-                                  WHERE persistent=3")
-            v = result.fetchone()
-            count = v[0] if v is not None else 0
-            if count > limit:
-                diff = count - limit
-                result = sql.execute("SELECT DISTINCT(album_id)\
-                                      FROM tracks\
-                                      WHERE persistent=3 LIMIT %s" % diff)
-            v = result.fetchone()
-            album_id = v[0] if v is not None else None
-            if album_id is not None:
-                result = sql.execute("SELECT rowid FROM tracks\
-                                     WHERE album_id=?", (album_id,))
-                return list(itertools.chain(*result))
-            return []
-
     def get_randoms(self):
         """
             Return random tracks
@@ -662,30 +684,66 @@ class TracksDatabase:
                 return v[0]
             return 0
 
-    def get_mtime(self, track_id):
+    def get_mtime(self, track_id, genre_ids=[]):
         """
-            Get modification time
-            @param track id  as int
-            @return mtime as int
+            Get modification time, if genre_ids empty, only local tracks
+            @param track_id as int
+            @param genre_ids as [int]
+            @return modification time as int
         """
         with SqlCursor(Lp().db) as sql:
-            result = sql.execute("SELECT mtime FROM tracks WHERE\
-                                 rowid=?", (track_id,))
+            if genre_ids:
+                filters = tuple([track_id] + genre_ids)
+                request = "SELECT mtime FROM track_genres\
+                           WHERE track_id=?"
+                for genre_id in genre_ids:
+                    request += " AND genre_id=?"
+            else:
+                filters = (track_id,)
+                request = "SELECT mtime FROM track_genres AS TG\
+                           WHERE TG.track_id=?\
+                           AND NOT EXISTS (\
+                                SELECT mtime FROM track_genres\
+                                WHERE track_id=TG.track_id\
+                                AND genre_id < 0)"
+            result = sql.execute(request, filters)
             v = result.fetchone()
             if v is not None:
                 return v[0]
             return 0
 
-    def set_mtime(self, track_id, mtime):
+    def get_old_charts_track_ids(self, time):
+        """
+            Return old tracks from charts
+            @param time as int
+            @return track ids as [int]
+        """
+        with SqlCursor(Lp().db) as sql:
+            # First tracks loaded by play on search
+            result = sql.execute("SELECT tracks.rowid\
+                                  FROM tracks, track_genres\
+                                  WHERE track_genres.track_id=tracks.rowid\
+                                  AND track_genres.genre_id=?\
+                                  AND track_genres.mtime < ?",
+                                 (Type.CHARTS, time))
+            return list(itertools.chain(*result))
+
+    def set_mtime(self, track_id, genre_ids, mtime):
         """
             Get modification time
             @param track id  as int
             @param mtime as int
         """
         with SqlCursor(Lp().db) as sql:
-            sql.execute("UPDATE tracks\
-                         SET mtime=?\
-                         WHERE rowid=?", (mtime, track_id))
+            filters = (mtime, track_id,) + tuple(genre_ids)
+            request = "UPDATE track_genres\
+                       SET mtime=?\
+                       WHERE track_id=?\
+                       AND ("
+            for genre_id in genre_ids:
+                request += "genre_id=? OR "
+            request += "1=0)"
+            sql.execute(request, filters)
             sql.commit()
 
     def count(self):
@@ -724,11 +782,15 @@ class TracksDatabase:
         """
         with SqlCursor(Lp().db) as sql:
             result = sql.execute("SELECT tracks.rowid, tracks.name\
-                                  FROM tracks, track_genres\
+                                  FROM tracks, track_genres AS TG\
                                   WHERE noaccents(name) LIKE ?\
-                                  AND tracks.rowid=track_genres.track_id\
-                                  AND track_genres.genre_id!=? LIMIT 25",
-                                 ('%' + noaccents(searched) + '%',
+                                  AND tracks.rowid=TG.track_id\
+                                  AND ? NOT IN (\
+                                    SELECT track_genres.genre_id\
+                                    FROM track_genres\
+                                    WHERE TG.track_id=track_genres.track_id)\
+                                  LIMIT 25",
+                                 ("%" + noaccents(searched) + "%",
                                   Type.CHARTS))
             return list(result)
 

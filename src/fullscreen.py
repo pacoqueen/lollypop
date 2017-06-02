@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -10,17 +10,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, Gdk, GLib, Gio
 
 from datetime import datetime
 
 from lollypop.define import Lp, ArtSize, Type
 from lollypop.pop_next import NextPopover
-from lollypop.controllers import InfosController, PlaybackController
+from lollypop.controllers import InfoController, PlaybackController
 from lollypop.controllers import ProgressController
 
 
-class FullScreen(Gtk.Window, InfosController,
+class FullScreen(Gtk.Window, InfoController,
                  PlaybackController, ProgressController):
     """
         Show a fullscreen window showing current track context
@@ -45,7 +45,7 @@ class FullScreen(Gtk.Window, InfosController,
         self.__parent = parent
 
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/FullScreen.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/FullScreen.ui")
         builder.connect_signals(self)
 
         # Calculate cover size
@@ -57,37 +57,37 @@ class FullScreen(Gtk.Window, InfosController,
             artsize = int(ArtSize.FULLSCREEN*geometry.width/1920)
         else:
             artsize = int(ArtSize.FULLSCREEN*geometry.height/1920)
-        InfosController.__init__(self, artsize)
+        InfoController.__init__(self, artsize)
 
-        self._play_btn = builder.get_object('play_btn')
-        self._next_btn = builder.get_object('next_btn')
-        self._prev_btn = builder.get_object('prev_btn')
+        self._play_btn = builder.get_object("play_btn")
+        self._next_btn = builder.get_object("next_btn")
+        self._prev_btn = builder.get_object("prev_btn")
         self._next_popover = NextPopover()
         self._next_popover.set_position(Gtk.PositionType.BOTTOM)
-        self._play_image = builder.get_object('play_image')
-        self._pause_image = builder.get_object('pause_image')
-        close_btn = builder.get_object('close_btn')
-        close_btn.connect('clicked', self.__destroy)
-        self._cover = builder.get_object('cover')
-        self._title_label = builder.get_object('title')
-        self._artist_label = builder.get_object('artist')
-        self._album_label = builder.get_object('album')
+        self._play_image = builder.get_object("play_image")
+        self._pause_image = builder.get_object("pause_image")
+        close_btn = builder.get_object("close_btn")
+        close_btn.connect("clicked", self.__destroy)
+        self._cover = builder.get_object("cover")
+        self._title_label = builder.get_object("title")
+        self._artist_label = builder.get_object("artist")
+        self._album_label = builder.get_object("album")
 
-        self._datetime = builder.get_object('datetime')
+        self._datetime = builder.get_object("datetime")
 
-        self._progress = builder.get_object('progress_scale')
-        self._timelabel = builder.get_object('playback')
-        self._total_time_label = builder.get_object('duration')
-        self.connect('key-release-event', self.__on_key_release_event)
-        self.add(builder.get_object('widget'))
+        self._progress = builder.get_object("progress_scale")
+        self._timelabel = builder.get_object("playback")
+        self._total_time_label = builder.get_object("duration")
+        self.connect("key-release-event", self.__on_key_release_event)
+        self.add(builder.get_object("widget"))
 
     def do_show(self):
         """
             Init signals, set color and go party mode if nothing is playing
         """
-        self.__signal1_id = Lp().player.connect('current-changed',
+        self.__signal1_id = Lp().player.connect("current-changed",
                                                 self.on_current_changed)
-        self.__signal2_id = Lp().player.connect('status-changed',
+        self.__signal2_id = Lp().player.connect("status-changed",
                                                 self.on_status_changed)
         if Lp().player.current_track.id is None:
             Lp().player.set_party(True)
@@ -99,15 +99,16 @@ class FullScreen(Gtk.Window, InfosController,
         Gtk.Window.do_show(self)
         self.__parent.set_skip_pager_hint(True)
         self.__parent.set_skip_taskbar_hint(True)
-        now = datetime.now()
-        self._datetime.set_label(now.strftime('%a %d %b, %X')[:-3])
         if self.__timeout2 is None:
-            second = datetime.now().second
-            if 60 - second > 0:
-                GLib.timeout_add((60-second)*1000, self.__update_datetime)
-            else:
-                self.__timeout2 = GLib.timeout_add(60000,
-                                                   self.__update_datetime)
+            try:
+                interface = Gio.Settings.new("org.gnome.desktop.interface")
+                show_seconds = interface.get_value("clock-show-seconds")
+            except:
+                show_seconds = False
+            self.__update_datetime(show_seconds)
+            self.__timeout2 = GLib.timeout_add(1000,
+                                               self.__update_datetime,
+                                               show_seconds)
         self._update_position(Lp().player.position/1000000)
         self.fullscreen()
         self._next_popover.set_relative_to(self._album_label)
@@ -140,12 +141,19 @@ class FullScreen(Gtk.Window, InfosController,
         self._next_popover.hide()
         Lp().uninhibit(self.__cookie)
 
+    def show_hide_volume_control(self):
+        """
+            Show/Hide volume control
+        """
+        self._show_volume_control = not self._show_volume_control
+        self._update_state()
+
     def on_current_changed(self, player):
         """
             Update infos and show/hide popover
             @param player as Player
         """
-        InfosController.on_current_changed(self, player)
+        InfoController.on_current_changed(self, player)
         ProgressController.on_current_changed(self, player)
         if player.current_track.id is not None:
             album_name = player.current_track.album.name
@@ -163,12 +171,16 @@ class FullScreen(Gtk.Window, InfosController,
 #######################
 # PRIVATE             #
 #######################
-    def __update_datetime(self):
+    def __update_datetime(self, show_seconds=False):
         """
             Update datetime in headerbar
+            @param show_seconds as bool
         """
         now = datetime.now()
-        self._datetime.set_label(now.strftime('%a %d %b, %X')[:-3])
+        if show_seconds:
+            self._datetime.set_label(now.strftime("%a %d %b, %X"))
+        else:
+            self._datetime.set_label(now.strftime("%a %d %b, %X")[:-3])
         if self.__timeout2 is None:
             self.__timeout2 = GLib.timeout_add(60000, self.__update_datetime)
             return False

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +15,7 @@ from gi.repository import GObject, GLib, Gio, TotemPlParser
 import sqlite3
 
 from lollypop.sqlcursor import SqlCursor
+from lollypop.define import Type
 from lollypop.lio import Lio
 
 
@@ -25,14 +26,15 @@ class Radios(GObject.GObject):
     LOCAL_PATH = GLib.get_home_dir() + "/.local/share/lollypop"
     DB_PATH = "%s/radios.db" % LOCAL_PATH
 
-    create_radios = '''CREATE TABLE radios (
+    create_radios = """CREATE TABLE radios (
                             id INTEGER PRIMARY KEY,
                             name TEXT NOT NULL,
-                            url TEXY NOT NULL,
-                            popularity INT NOT NULL)'''
+                            url TEXT NOT NULL,
+                            rate INT NOT NULL DEFAULT -1,
+                            popularity INT NOT NULL)"""
     __gsignals__ = {
         # Add, rename, delete
-        'radios-changed': (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "radios-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self):
@@ -54,14 +56,14 @@ class Radios(GObject.GObject):
         if try_import:
             d = Lio.File.new_for_path(self.LOCAL_PATH + "/radios")
             infos = d.enumerate_children(
-                'standard::name',
+                "standard::name",
                 Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
                 None)
             for info in infos:
                 f = info.get_name()
                 if f.endswith(".m3u"):
                     parser = TotemPlParser.Parser.new()
-                    parser.connect('entry-parsed',
+                    parser.connect("entry-parsed",
                                    self.__on_entry_parsed,
                                    f[:-4])
                     parser.parse_async(d.get_uri() + "/%s" % f,
@@ -84,7 +86,7 @@ class Radios(GObject.GObject):
                              VALUES (?, ?, ?)",
                             (name, url, 0))
             sql.commit()
-            GLib.idle_add(self.emit, 'radios-changed')
+            GLib.idle_add(self.emit, "radios-changed")
 
     def exists(self, name):
         """
@@ -115,7 +117,7 @@ class Radios(GObject.GObject):
                         WHERE name=?",
                         (new_name, old_name))
             sql.commit()
-            GLib.idle_add(self.emit, 'radios-changed')
+            GLib.idle_add(self.emit, "radios-changed")
 
     def delete(self, name):
         """
@@ -127,7 +129,7 @@ class Radios(GObject.GObject):
                         WHERE name=?",
                         (name,))
             sql.commit()
-            GLib.idle_add(self.emit, 'radios-changed')
+            GLib.idle_add(self.emit, "radios-changed")
 
     def get(self):
         """
@@ -137,7 +139,8 @@ class Radios(GObject.GObject):
         with SqlCursor(self) as sql:
             result = sql.execute("SELECT name, url\
                                   FROM radios\
-                                  ORDER BY popularity DESC, name")
+                                  ORDER BY rate DESC,\
+                                  popularity DESC, name")
             return list(result)
 
     def get_url(self, name):
@@ -153,7 +156,7 @@ class Radios(GObject.GObject):
             v = result.fetchone()
             if v is not None:
                 return v[0]
-            return ''
+            return ""
 
     def set_more_popular(self, name):
         """
@@ -203,6 +206,21 @@ class Radios(GObject.GObject):
             except:  # Database is locked
                 pass
 
+    def set_rate(self, name, rate):
+        """
+            Set rate
+            @param name as str
+            @param rate as int
+        """
+        with SqlCursor(self) as sql:
+            try:
+                sql.execute("UPDATE radios SET\
+                            rate=? WHERE name=?",
+                            (rate, name))
+                sql.commit()
+            except:  # Database is locked
+                pass
+
     def get_id(self, name):
         """
             Get radio id by name
@@ -239,12 +257,27 @@ class Radios(GObject.GObject):
         """
         with SqlCursor(self) as sql:
             result = sql.execute("SELECT popularity\
-                                 FROM radios WHERE\
-                                 name=?", (name,))
+                                 FROM radios\
+                                 WHERE name=?", (name,))
             v = result.fetchone()
             if v is not None:
                 return v[0]
             return 0
+
+    def get_rate(self, name):
+        """
+            Get radio rate
+            @param name as str
+            @return rate as int
+        """
+        with SqlCursor(self) as sql:
+            result = sql.execute("SELECT rate\
+                                  FROM radios\
+                                  WHERE name=?", (name,))
+            v = result.fetchone()
+            if v and v[0]:
+                return v[0]
+            return Type.NONE
 
     def get_cursor(self):
         """

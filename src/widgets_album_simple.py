@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -25,7 +25,7 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
         Album widget showing cover, artist and title
     """
     __gsignals__ = {
-        'overlayed': (GObject.SignalFlags.RUN_FIRST, None, (bool,))
+        "overlayed": (GObject.SignalFlags.RUN_FIRST, None, (bool,))
     }
 
     def __init__(self, album_id, genre_ids, artist_ids):
@@ -38,39 +38,46 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
         # We do not use Gtk.Builder for speed reasons
         Gtk.FlowBoxChild.__init__(self)
         self.set_size_request(ArtSize.BIG, ArtSize.BIG)
-        self.get_style_context().add_class('loading')
-        AlbumWidget.__init__(self, album_id, genre_ids, artist_ids)
+        self.get_style_context().add_class("loading")
+        AlbumWidget.__init__(self, album_id, genre_ids,
+                             artist_ids, ArtSize.BIG)
 
     def populate(self):
         """
             Populate widget content
         """
-        self.get_style_context().remove_class('loading')
+        self.get_style_context().remove_class("loading")
         self._rounded_class = "rounded-icon-small"
         self._widget = Gtk.EventBox()
         grid = Gtk.Grid()
         grid.set_orientation(Gtk.Orientation.VERTICAL)
         self._cover = Gtk.Image()
-        self._cover.set_property('halign', Gtk.Align.CENTER)
-        self._cover.get_style_context().add_class('cover-frame')
+        self._cover.set_property("halign", Gtk.Align.CENTER)
+        self._cover.get_style_context().add_class("cover-frame")
         self.__title_label = Gtk.Label()
         self.__title_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.__title_label.set_property('halign', Gtk.Align.CENTER)
+        self.__title_label.set_property("halign", Gtk.Align.CENTER)
         self.__title_label.set_markup("<b>" +
                                       GLib.markup_escape_text(
                                                             self._album.name) +
                                       "</b>")
         self.__artist_label = Gtk.Label()
         self.__artist_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.__artist_label.set_property('halign', Gtk.Align.CENTER)
+        self.__artist_label.set_property("halign", Gtk.Align.CENTER)
         self.__artist_label.set_text(", ".join(self._album.artists))
-        self.__artist_label.get_style_context().add_class('dim-label')
-        self._widget.set_property('has-tooltip', True)
-        self._widget.connect('query-tooltip', self._on_query_tooltip)
+        self.__artist_label.get_style_context().add_class("dim-label")
+        artist_eventbox = Gtk.EventBox()
+        artist_eventbox.add(self.__artist_label)
+        artist_eventbox.connect("realize", self._on_eventbox_realize)
+        artist_eventbox.connect("button-press-event",
+                                self.__on_artist_button_press)
+        artist_eventbox.show()
+        self._widget.set_property("has-tooltip", True)
+        self._widget.connect("query-tooltip", self._on_query_tooltip)
         self._widget.add(grid)
         self.__overlay = Gtk.Overlay.new()
-        self.__overlay.set_property('halign', Gtk.Align.CENTER)
-        self.__overlay.set_property('valign', Gtk.Align.CENTER)
+        self.__overlay.set_property("halign", Gtk.Align.CENTER)
+        self.__overlay.set_property("valign", Gtk.Align.CENTER)
         self.__overlay_grid = Gtk.Grid()
         self.__overlay_grid.set_column_spacing(6)
         self.__overlay_grid.set_row_spacing(6)
@@ -81,33 +88,35 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
         self.__overlay.add(self._cover)
         self.__overlay.add_overlay(self.__overlay_grid)
         color = Gtk.Grid()
-        color.set_property('halign', Gtk.Align.CENTER)
-        color.set_property('valign', Gtk.Align.CENTER)
-        color.get_style_context().add_class('white')
+        color.set_property("halign", Gtk.Align.CENTER)
+        color.set_property("valign", Gtk.Align.CENTER)
+        color.get_style_context().add_class("white")
         color.add(self.__overlay)
         grid.add(color)
         grid.add(self.__title_label)
-        grid.add(self.__artist_label)
+        grid.add(artist_eventbox)
         self.add(self._widget)
         self.set_cover()
         self.update_state()
-        self._widget.set_property('halign', Gtk.Align.CENTER)
-        self._widget.set_property('valign', Gtk.Align.CENTER)
+        self._widget.set_property("halign", Gtk.Align.CENTER)
+        self._widget.set_property("valign", Gtk.Align.CENTER)
         self.show_all()
-        self._widget.connect('enter-notify-event', self._on_enter_notify)
-        self._widget.connect('leave-notify-event', self._on_leave_notify)
-        self._widget.connect('button-press-event', self.__on_button_press)
+        self._widget.connect("enter-notify-event", self._on_enter_notify)
+        self._widget.connect("leave-notify-event", self._on_leave_notify)
+        self._widget.connect("button-press-event", self.__on_button_press)
+        self._lock_overlay = False
         if self._album.is_web:
             self._cover.get_style_context().add_class(
-                                                'cover-frame-web')
+                                                "cover-frame-web")
 
     def do_get_preferred_width(self):
         """
             Return preferred width
             @return (int, int)
         """
-        # Padding: 3px, border: 1px + spacing
-        width = ArtSize.BIG + 14
+        if self._widget is None:
+            return (0, 0)
+        width = Gtk.FlowBoxChild.do_get_preferred_width(self)[0]
         return (width, width)
 
 #######################
@@ -124,43 +133,43 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
         if set:
             # Play button
             self._play_event = Gtk.EventBox()
-            self._play_event.set_property('has-tooltip', True)
+            self._play_event.set_property("has-tooltip", True)
             self._play_event.set_tooltip_text(_("Play"))
-            self._play_event.connect('realize', self._on_eventbox_realize)
-            self._play_event.connect('button-press-event',
+            self._play_event.connect("realize", self._on_eventbox_realize)
+            self._play_event.connect("button-press-event",
                                      self._on_play_press_event)
             self._play_button = Gtk.Image.new_from_icon_name(
-                                               'media-playback-start-symbolic',
+                                               "media-playback-start-symbolic",
                                                Gtk.IconSize.BUTTON)
             self._play_button.set_opacity(0)
             # Play all button
             self._play_all_event = Gtk.EventBox()
-            self._play_all_event.set_property('has-tooltip', True)
+            self._play_all_event.set_property("has-tooltip", True)
             self._play_all_event.set_tooltip_text(_("Play albums"))
-            self._play_all_event.set_property('halign', Gtk.Align.END)
-            self._play_all_event.connect('realize', self._on_eventbox_realize)
-            self._play_all_event.connect('button-press-event',
+            self._play_all_event.set_property("halign", Gtk.Align.END)
+            self._play_all_event.connect("realize", self._on_eventbox_realize)
+            self._play_all_event.connect("button-press-event",
                                          self.__on_play_all_press_event)
             self._play_all_button = Gtk.Image.new()
             self._play_all_button.set_opacity(0)
             # Artwork button
             self._artwork_event = Gtk.EventBox()
-            self._artwork_event.set_property('has-tooltip', True)
+            self._artwork_event.set_property("has-tooltip", True)
             self._artwork_event.set_tooltip_text(_("Change artwork"))
-            self._artwork_event.set_property('halign', Gtk.Align.END)
-            self._artwork_event.connect('realize', self._on_eventbox_realize)
-            self._artwork_event.connect('button-press-event',
+            self._artwork_event.set_property("halign", Gtk.Align.END)
+            self._artwork_event.connect("realize", self._on_eventbox_realize)
+            self._artwork_event.connect("button-press-event",
                                         self._on_artwork_press_event)
             self._artwork_button = Gtk.Image.new_from_icon_name(
-                                               'image-x-generic-symbolic',
+                                               "image-x-generic-symbolic",
                                                Gtk.IconSize.BUTTON)
             self._artwork_button.set_opacity(0)
             # Action button
             self._action_event = Gtk.EventBox()
-            self._action_event.set_property('has-tooltip', True)
-            self._action_event.set_property('halign', Gtk.Align.END)
-            self._action_event.connect('realize', self._on_eventbox_realize)
-            self._action_event.connect('button-press-event',
+            self._action_event.set_property("has-tooltip", True)
+            self._action_event.set_property("halign", Gtk.Align.END)
+            self._action_event.connect("realize", self._on_eventbox_realize)
+            self._action_event.connect("button-press-event",
                                        self._on_action_press_event)
             self._action_button = Gtk.Image.new()
             self._action_button.set_opacity(0)
@@ -168,17 +177,17 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
             if self._overlay_orientation == Gtk.Orientation.VERTICAL:
                 self._play_event.set_hexpand(False)
                 self._play_event.set_vexpand(True)
-                self._play_event.set_property('halign', Gtk.Align.END)
-                self._play_event.set_property('valign', Gtk.Align.START)
-                self.__overlay_grid.set_property('valign', Gtk.Align.FILL)
-                self.__overlay_grid.set_property('halign', Gtk.Align.END)
+                self._play_event.set_property("halign", Gtk.Align.END)
+                self._play_event.set_property("valign", Gtk.Align.START)
+                self.__overlay_grid.set_property("valign", Gtk.Align.FILL)
+                self.__overlay_grid.set_property("halign", Gtk.Align.END)
             else:
                 self._play_event.set_hexpand(True)
                 self._play_event.set_vexpand(False)
-                self._play_event.set_property('halign', Gtk.Align.START)
-                self._play_event.set_property('valign', Gtk.Align.END)
-                self.__overlay_grid.set_property('halign', Gtk.Align.FILL)
-                self.__overlay_grid.set_property('valign', Gtk.Align.END)
+                self._play_event.set_property("halign", Gtk.Align.START)
+                self._play_event.set_property("valign", Gtk.Align.END)
+                self.__overlay_grid.set_property("halign", Gtk.Align.FILL)
+                self.__overlay_grid.set_property("valign", Gtk.Align.END)
             self._play_event.add(self._play_button)
             self._play_all_event.add(self._play_all_button)
             self._artwork_event.add(self._artwork_button)
@@ -234,7 +243,7 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
         if Lp().player.is_party:
             Lp().player.set_party(False)
         Lp().player.clear_albums()
-        if Lp().settings.get_enum('shuffle') == Shuffle.TRACKS:
+        if Lp().settings.get_enum("shuffle") == Shuffle.TRACKS:
             track = choice(self._album.tracks)
         else:
             track = self._album.tracks[0]
@@ -258,7 +267,7 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
             @param keyboard as bool
             @param tooltip as Gtk.Tooltip
         """
-        eventbox.set_tooltip_text('')
+        eventbox.set_tooltip_text("")
         for widget in [self.__title_label, self.__artist_label]:
             layout = widget.get_layout()
             if layout.is_ellipsized():
@@ -276,7 +285,7 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
     def __on_button_press(self, eventbox, event):
         """
             Store pressed button
-            @param flowbox as Gtk.EventBox
+            @param eventbox as Gtk.EventBox
             @param event as Gdk.EventButton
         """
         if event.button != 1:
@@ -298,8 +307,17 @@ class AlbumSimpleWidget(Gtk.FlowBoxChild, AlbumWidget):
             rect.y = event.y
             rect.width = rect.height = 1
             popover.set_pointing_to(rect)
-            popover.connect('closed', self.__on_album_popover_closed)
+            popover.connect("closed", self.__on_album_popover_closed)
             popover.show()
+
+    def __on_artist_button_press(self, eventbox, event):
+        """
+            Go to artist page
+            @param eventbox as Gtk.EventBox
+            @param event as Gdk.EventButton
+        """
+        Lp().window.show_artists_albums(self._album.artist_ids)
+        return True
 
     def __on_album_popover_closed(self, popover):
         """

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -141,7 +141,7 @@ class ProgressController:
         self.__timeout_id = None
         # Show volume control
         self._show_volume_control = False
-        Lp().player.connect('duration-changed', self.__on_duration_changed)
+        Lp().player.connect("duration-changed", self.__on_duration_changed)
 
     def on_current_changed(self, player):
         """
@@ -164,7 +164,7 @@ class ProgressController:
             self._progress.set_range(0.0, 0.0)
         else:
             self._progress.set_sensitive(True)
-            self._progress.set_range(0.0, player.current_track.duration * 60)
+            self._progress.set_range(0.0, player.current_track.duration)
             self._total_time_label.set_text(
                 seconds_to_string(player.current_track.duration))
 
@@ -252,7 +252,7 @@ class ProgressController:
         if self._show_volume_control or event.button != 1:
             return
         value = scale.get_value()
-        Lp().player.seek(value/60)
+        Lp().player.seek(value)
         self.__seeking = False
         self._update_position(value)
 
@@ -279,15 +279,15 @@ class ProgressController:
             elif Lp().player.is_playing:
                 position = Lp().player.position
                 if y > 0:
-                    seek = position/1000000/60-5
+                    seek = position - 5 * Gst.SECOND
                 else:
-                    seek = position/1000000/60+5
+                    seek = position + 5 * Gst.SECOND
                 if seek < 0:
                     seek = 0
                 if seek > Lp().player.current_track.duration:
                     seek = Lp().player.current_track.duration - 2
                 Lp().player.seek(seek)
-                self._update_position(seek*60)
+                self._update_position(seek)
 
     def _update_position(self, value=None):
         """
@@ -302,10 +302,10 @@ class ProgressController:
             self._total_time_label.set_text(volume)
         elif not self.__seeking:
             if value is None and Lp().player.get_status() != Gst.State.PAUSED:
-                value = Lp().player.position/1000000
+                value = Lp().player.position / Gst.SECOND
             if value is not None:
                 self._progress.set_value(value)
-                self._timelabel.set_text(seconds_to_string(value/60))
+                self._timelabel.set_text(seconds_to_string(value))
         return True
 
 #######################
@@ -318,12 +318,12 @@ class ProgressController:
             @param track id as int
         """
         if track_id == player.current_track.id:
-            self._progress.set_range(0.0, player.current_track.duration * 60)
+            self._progress.set_range(0.0, player.current_track.duration)
             self._total_time_label.set_text(
                     seconds_to_string(player.current_track.duration))
 
 
-class InfosController:
+class InfoController:
     """
         Infos controller (for toolbars)
     """

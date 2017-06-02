@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -13,10 +13,12 @@
 from gi.repository import GLib
 
 import itertools
+from time import time
 
 from lollypop.sqlcursor import SqlCursor
 from lollypop.utils import translate_artist_name
 from lollypop.database_history import History
+from lollypop.radios import Radios
 from lollypop.define import Lp
 
 
@@ -53,6 +55,8 @@ class DatabaseUpgrade:
             17: "ALTER TABLE albums ADD loved INT NOT NULL DEFAULT 0",
             18: self.__upgrade_18,
             19: self.__upgrade_19,
+            20: self.__upgrade_20,
+            21: self.__upgrade_21,
                          }
 
     """
@@ -72,11 +76,11 @@ class DatabaseUpgrade:
                 try:
                     if isinstance(self._UPGRADES[i], str):
                         sql.execute(self._UPGRADES[i])
+                        sql.commit()
                     else:
                         self._UPGRADES[i]()
                 except Exception as e:
                     print("Database upgrade failed: ", e)
-            sql.commit()
             return len(self._UPGRADES)
 
 #######################
@@ -160,7 +164,7 @@ class DatabaseUpgrade:
         """
         with SqlCursor(Lp().db) as sql:
             sql.execute("ALTER TABLE tracks RENAME TO tmp_tracks")
-            sql.execute('''CREATE TABLE tracks (id INTEGER PRIMARY KEY,
+            sql.execute("""CREATE TABLE tracks (id INTEGER PRIMARY KEY,
                                               name TEXT NOT NULL,
                                               uri TEXT NOT NULL,
                                               duration INT,
@@ -173,15 +177,15 @@ class DatabaseUpgrade:
                                               ltime INT NOT NULL,
                                               mtime INT NOT NULL,
                                               persistent INT NOT NULL
-                                              DEFAULT 1)''')
+                                              DEFAULT 1)""")
 
-            sql.execute('''INSERT INTO tracks(id, name, uri, duration,
+            sql.execute("""INSERT INTO tracks(id, name, uri, duration,
                         tracknumber, discnumber, discname, album_id,
                         year, popularity, ltime, mtime, persistent) SELECT
                             id, name, filepath, duration,
                             tracknumber, discnumber, discname, album_id,
                             year, popularity, ltime, mtime, persistent FROM
-                          tmp_tracks''')
+                          tmp_tracks""")
             sql.execute("DROP TABLE tmp_tracks")
             result = sql.execute("SELECT rowid FROM tracks")
             for track_id in list(itertools.chain(*result)):
@@ -197,10 +201,10 @@ class DatabaseUpgrade:
             sql.commit()
         with SqlCursor(Lp().playlists) as sql:
             sql.execute("ALTER TABLE tracks RENAME TO tmp_tracks")
-            sql.execute('''CREATE TABLE tracks (playlist_id INT NOT NULL,
-                                                uri TEXT NOT NULL)''')
-            sql.execute('''INSERT INTO tracks(playlist_id, uri) SELECT
-                            playlist_id, filepath FROM tmp_tracks''')
+            sql.execute("""CREATE TABLE tracks (playlist_id INT NOT NULL,
+                                                uri TEXT NOT NULL)""")
+            sql.execute("""INSERT INTO tracks(playlist_id, uri) SELECT
+                            playlist_id, filepath FROM tmp_tracks""")
             sql.execute("DROP TABLE tmp_tracks")
             result = sql.execute("SELECT uri FROM tracks")
             for path in list(itertools.chain(*result)):
@@ -228,14 +232,14 @@ class DatabaseUpgrade:
         """
             Get ride of paths
         """
-        paths = Lp().settings.get_value('music-path')
+        paths = Lp().settings.get_value("music-path")
         uris = []
         for path in paths:
             uris.append(GLib.filename_to_uri(path))
-        Lp().settings.set_value('music-uris', GLib.Variant('as', uris))
+        Lp().settings.set_value("music-uris", GLib.Variant("as", uris))
         with SqlCursor(Lp().db) as sql:
             sql.execute("ALTER TABLE albums RENAME TO tmp_albums")
-            sql.execute('''CREATE TABLE albums (
+            sql.execute("""CREATE TABLE albums (
                                               id INTEGER PRIMARY KEY,
                                               name TEXT NOT NULL,
                                               no_album_artist BOOLEAN NOT NULL,
@@ -243,13 +247,13 @@ class DatabaseUpgrade:
                                               uri TEXT NOT NULL,
                                               popularity INT NOT NULL,
                                               synced INT NOT NULL,
-                                              mtime INT NOT NULL)''')
+                                              mtime INT NOT NULL)""")
 
-            sql.execute('''INSERT INTO albums(id, name, no_album_artist,
+            sql.execute("""INSERT INTO albums(id, name, no_album_artist,
                         year, uri, popularity, synced, mtime) SELECT
                             id, name, no_album_artist,
                             year, path, popularity, synced, mtime FROM
-                            tmp_albums''')
+                            tmp_albums""")
             sql.execute("DROP TABLE tmp_albums")
             result = sql.execute("SELECT rowid, uri FROM albums")
             for (rowid, uri) in result:
@@ -286,4 +290,129 @@ class DatabaseUpgrade:
                         INT NOT NULL DEFAULT -1")
             sql.execute("ALTER TABLE albums ADD rate\
                         INT NOT NULL DEFAULT -1")
+            sql.commit()
+
+    def __upgrade_20(self):
+        """
+            Add mtimes tables
+        """
+        mtime = int(time())
+        with SqlCursor(Lp().db) as sql:
+            sql.execute("ALTER TABLE album_genres\
+                         ADD mtime INT NOT NULL DEFAULT %s" % mtime)
+            sql.execute("ALTER TABLE track_genres\
+                         ADD mtime INT NOT NULL DEFAULT %s" % mtime)
+            # Remove mtimes from albums table
+            sql.execute("CREATE TEMPORARY TABLE backup(\
+                                          id INTEGER PRIMARY KEY,\
+                                          name TEXT NOT NULL,\
+                                          no_album_artist BOOLEAN NOT NULL,\
+                                          year INT,\
+                                          uri TEXT NOT NULL,\
+                                          popularity INT NOT NULL,\
+                                          rate INT NOT NULL,\
+                                          loved INT NOT NULL,\
+                                          synced INT NOT NULL)")
+            sql.execute("INSERT INTO backup\
+                            SELECT id,\
+                                   name,\
+                                   no_album_artist,\
+                                   year,\
+                                   uri,\
+                                   popularity,\
+                                   rate,\
+                                   loved,\
+                                   synced FROM albums")
+            sql.execute("DROP TABLE albums")
+            sql.execute("CREATE TABLE albums(\
+                                          id INTEGER PRIMARY KEY,\
+                                          name TEXT NOT NULL,\
+                                          no_album_artist BOOLEAN NOT NULL,\
+                                          year INT,\
+                                          uri TEXT NOT NULL,\
+                                          popularity INT NOT NULL,\
+                                          rate INT NOT NULL,\
+                                          loved INT NOT NULL,\
+                                          synced INT NOT NULL)")
+            sql.execute("INSERT INTO albums\
+                            SELECT id,\
+                                   name,\
+                                   no_album_artist,\
+                                   year,\
+                                   uri,\
+                                   popularity,\
+                                   rate,\
+                                   loved,\
+                                   synced FROM backup")
+            sql.execute("DROP TABLE backup")
+            # Remove mtimes from tracks table
+            sql.execute("CREATE TEMPORARY TABLE backup(\
+                                          id INTEGER PRIMARY KEY,\
+                                          name TEXT NOT NULL,\
+                                          uri TEXT NOT NULL,\
+                                          duration INT,\
+                                          tracknumber INT,\
+                                          discnumber INT,\
+                                          discname TEXT,\
+                                          album_id INT NOT NULL,\
+                                          year INT,\
+                                          popularity INT NOT NULL,\
+                                          rate INT NOT NULL,\
+                                          ltime INT NOT NULL,\
+                                          persistent INT NOT NULL)")
+            sql.execute("INSERT INTO backup\
+                            SELECT id,\
+                                   name,\
+                                   uri,\
+                                   duration,\
+                                   tracknumber,\
+                                   discnumber,\
+                                   discname,\
+                                   album_id,\
+                                   year,\
+                                   popularity,\
+                                   rate,\
+                                   ltime,\
+                                   persistent FROM tracks")
+            sql.execute("DROP TABLE tracks")
+            sql.execute("CREATE TABLE tracks(\
+                                          id INTEGER PRIMARY KEY,\
+                                          name TEXT NOT NULL,\
+                                          uri TEXT NOT NULL,\
+                                          duration INT,\
+                                          tracknumber INT,\
+                                          discnumber INT,\
+                                          discname TEXT,\
+                                          album_id INT NOT NULL,\
+                                          year INT,\
+                                          popularity INT NOT NULL,\
+                                          rate INT NOT NULL,\
+                                          ltime INT NOT NULL,\
+                                          persistent INT NOT NULL)")
+            sql.execute("INSERT INTO tracks\
+                            SELECT id,\
+                                   name,\
+                                   uri,\
+                                   duration,\
+                                   tracknumber,\
+                                   discnumber,\
+                                   discname,\
+                                   album_id,\
+                                   year,\
+                                   popularity,\
+                                   rate,\
+                                   ltime,\
+                                   persistent FROM backup")
+            sql.execute("DROP TABLE backup")
+            sql.commit()
+        # Clean all charts
+        Lp().db.del_tracks(Lp().tracks.get_old_charts_track_ids(mtime*2))
+
+    def __upgrade_21(self):
+        """
+            Add rate to radios
+        """
+        with SqlCursor(Radios()) as sql:
+            sql.execute("ALTER TABLE radios ADD rate\
+                         INT NOT NULL DEFAULT -1")
             sql.commit()

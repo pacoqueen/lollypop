@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -13,9 +13,10 @@
 from gi.repository import Gdk, GLib
 from gettext import gettext as _
 
-from .GioNotify import GioNotify
+from lollypop.GioNotify import GioNotify
 
 from lollypop.define import Lp, ArtSize, Type
+from lollypop.utils import is_gnome
 
 
 class NotificationManager:
@@ -30,7 +31,8 @@ class NotificationManager:
         self.__inhibitor = False
         self.__fully_initted = False
         self.__supports_actions = False
-        self.__notification = GioNotify.async_init('Lollypop',
+        self.__is_gnome = is_gnome()
+        self.__notification = GioNotify.async_init("Lollypop",
                                                    self.__on_init_finish)
 
     def send(self, message, sub=""):
@@ -48,7 +50,7 @@ class NotificationManager:
         self.__notification.show_new(
             message,
             sub,
-            'org.gnome.Lollypop',
+            "org.gnome.Lollypop",
         )
 
         if self.__supports_actions:
@@ -70,33 +72,33 @@ class NotificationManager:
             @param caps as [str]
         """
         self.__notification.set_hint(
-            'category',
-            GLib.Variant('s', 'x-gnome.music'),
+            "category",
+            GLib.Variant("s", "x-gnome.music"),
         )
 
         self.__notification.set_hint(
-            'desktop-entry',
-            GLib.Variant('s', 'org.gnome.Lollypop'),
+            "desktop-entry",
+            GLib.Variant("s", "org.gnome.Lollypop"),
         )
 
-        if 'action-icons' in caps:
+        if "action-icons" in caps:
             self.__notification.set_hint(
-                'action-icons',
-                GLib.Variant('b', True),
+                "action-icons",
+                GLib.Variant("b", True),
             )
 
-        if 'persistence' in caps:
+        if "persistence" in caps:
             self.__notification.set_hint(
-                'transient',
-                GLib.Variant('b', True),
+                "transient",
+                GLib.Variant("b", True),
             )
 
-        if 'actions' in caps:
+        if "actions" in caps:
             self.__supports_actions = True
             self.__set_actions()
 
         Lp().player.connect(
-            'current-changed',
+            "current-changed",
             self.__on_current_changed,
         )
 
@@ -108,13 +110,13 @@ class NotificationManager:
         """
 
         self.__notification.add_action(
-            'media-skip-backward',
+            "media-skip-backward",
             _("Previous"),
             Lp().player.prev,
         )
 
         self.__notification.add_action(
-            'media-skip-forward',
+            "media-skip-forward",
             _("Next"),
             Lp().player.next,
         )
@@ -124,29 +126,33 @@ class NotificationManager:
             Send notification with track_id infos
             @param player Player
         """
-        if player.current_track.title == '' or self.__inhibitor:
+        if player.current_track.title == "" or self.__inhibitor:
             self.__inhibitor = False
             return
         state = Lp().window.get_window().get_state()
-        app = Lp().window.get_application()
         if player.current_track.id is None or\
                 state & Gdk.WindowState.FOCUSED or\
-                app.is_fullscreen():
+                Lp().is_fullscreen():
             return
-        if player.current_track.id == Type.RADIOS:
-            cover_path = Lp().art.get_radio_cache_path(
-                player.current_track.album_artists[0], ArtSize.BIG)
+        # Since GNOME 3.24, using album cover looks bad
+        if self.__is_gnome:
+            cover_path = "org.gnome.Lollypop-symbolic"
         else:
-            cover_path = Lp().art.get_album_cache_path(
-                player.current_track.album, ArtSize.BIG)
-        if cover_path is None:
-            cover_path = 'org.gnome.Lollypop'
-        if player.current_track.album.name == '':
+            if player.current_track.id == Type.RADIOS:
+                cover_path = Lp().art.get_radio_cache_path(
+                    player.current_track.album_artists[0], ArtSize.BIG)
+            else:
+                cover_path = Lp().art.get_album_cache_path(
+                    player.current_track.album, ArtSize.BIG)
+            if cover_path is None:
+                cover_path = "org.gnome.Lollypop-symbolic"
+
+        if player.current_track.album.name == "":
             self.__notification.show_new(
                 player.current_track.title,
                 # TRANSLATORS: by refers to the artist,
                 _("by %s") %
-                '<b>' + ", ".join(player.current_track.artists) + '</b>',
+                "<b>" + ", ".join(player.current_track.artists) + "</b>",
                 cover_path)
         else:
             self.__notification.show_new(
@@ -154,6 +160,6 @@ class NotificationManager:
                 # TRANSLATORS: by refers to the artist,
                 # from to the album
                 _("by %s, from %s") %
-                ('<b>' + ", ".join(player.current_track.artists) + '</b>',
-                 '<i>' + player.current_track.album.name + '</i>'),
+                ("<b>" + ", ".join(player.current_track.artists) + "</b>",
+                 "<i>" + player.current_track.album.name + "</i>"),
                 cover_path)

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -147,7 +147,7 @@ class InfoCache:
                         del pixbuf
                     extract.savev(filepath_at_size, "jpeg",
                                   ["quality"], [str(Lp().settings.get_value(
-                                                'cover-quality').get_int32())])
+                                                "cover-quality").get_int32())])
                     del extract
                 return filepath_at_size
         except Exception as e:
@@ -212,7 +212,7 @@ class InfoCache:
             stream.close()
             pixbuf.savev(filepath+".jpg",
                          "jpeg", ["quality"], [str(Lp().settings.get_value(
-                                               'cover-quality').get_int32())])
+                                               "cover-quality").get_int32())])
             del pixbuf
 
     def remove(prefix, suffix):

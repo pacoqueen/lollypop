@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -36,19 +36,19 @@ class Playlists(GObject.GObject):
     _DB_PATH = "%s/playlists.db" % __LOCAL_PATH
     __gsignals__ = {
         # Add or remove a playlist
-        'playlists-changed': (GObject.SignalFlags.RUN_FIRST, None, (int,)),
+        "playlists-changed": (GObject.SignalFlags.RUN_FIRST, None, (int,)),
         # Objects added/removed to/from playlist
-        'playlist-add': (GObject.SignalFlags.RUN_FIRST, None, (int, int, int)),
-        'playlist-del': (GObject.SignalFlags.RUN_FIRST, None, (int, int))
+        "playlist-add": (GObject.SignalFlags.RUN_FIRST, None, (int, int, int)),
+        "playlist-del": (GObject.SignalFlags.RUN_FIRST, None, (int, int))
     }
-    __create_playlists = '''CREATE TABLE playlists (
+    __create_playlists = """CREATE TABLE playlists (
                             id INTEGER PRIMARY KEY,
                             name TEXT NOT NULL,
-                            mtime BIGINT NOT NULL)'''
+                            mtime BIGINT NOT NULL)"""
 
-    __create_tracks = '''CREATE TABLE tracks (
+    __create_tracks = """CREATE TABLE tracks (
                         playlist_id INT NOT NULL,
-                        uri TEXT NOT NULL)'''
+                        uri TEXT NOT NULL)"""
 
     def __init__(self):
         """
@@ -74,9 +74,9 @@ class Playlists(GObject.GObject):
         with SqlCursor(self) as sql:
             result = sql.execute("INSERT INTO playlists (name, mtime)"
                                  " VALUES (?, ?)",
-                                 (name, datetime.now().strftime('%s')))
+                                 (name, datetime.now().strftime("%s")))
             sql.commit()
-            GLib.idle_add(self.emit, 'playlists-changed', result.lastrowid)
+            GLib.idle_add(self.emit, "playlists-changed", result.lastrowid)
 
     def exists(self, playlist_id):
         """
@@ -108,7 +108,7 @@ class Playlists(GObject.GObject):
                         WHERE name=?",
                         (new_name, old_name))
             sql.commit()
-            GLib.idle_add(self.emit, 'playlists-changed', playlist_id)
+            GLib.idle_add(self.emit, "playlists-changed", playlist_id)
 
     def delete(self, name):
         """
@@ -124,7 +124,7 @@ class Playlists(GObject.GObject):
                         WHERE playlist_id=?",
                         (playlist_id,))
             sql.commit()
-            GLib.idle_add(self.emit, 'playlists-changed', playlist_id)
+            GLib.idle_add(self.emit, "playlists-changed", playlist_id)
 
     def remove(self, uri):
         """
@@ -190,6 +190,24 @@ class Playlists(GObject.GObject):
                                  (playlist_id,))
             return list(itertools.chain(*result))
 
+    def get_duration(self, playlist_id):
+        """
+            Return playlist duration
+            @param playlist_id as int
+            @return duration as int
+        """
+        with SqlCursor(self) as sql:
+            result = sql.execute("SELECT SUM(music.tracks.duration)\
+                                  FROM tracks, music.tracks\
+                                  WHERE tracks.playlist_id=?\
+                                  AND music.tracks.uri=\
+                                  main.tracks.uri",
+                                 (playlist_id,))
+            v = result.fetchone()
+            if v is not None and v[0] is not None:
+                return v[0]
+            return 0
+
     def get_track_ids_sorted(self, playlist_id):
         """
             Return availables track ids for playlist sorted by artist/album
@@ -239,6 +257,10 @@ class Playlists(GObject.GObject):
         """
         if playlist_id == Type.LOVED:
             return self.LOVED
+        elif playlist_id == Type.SPOTIFY:
+            return _("Spotify charts")
+        elif playlist_id == Type.LASTFM:
+            return _("Last.fm charts")
 
         with SqlCursor(self) as sql:
             result = sql.execute("SELECT name\
@@ -247,7 +269,7 @@ class Playlists(GObject.GObject):
             v = result.fetchone()
             if v is not None:
                 return v[0]
-            return ''
+            return ""
 
     def get_names(self, playlist_ids):
         """
@@ -282,7 +304,7 @@ class Playlists(GObject.GObject):
                          WHERE playlist_id=?", (playlist_id,))
             sql.commit()
             if notify:
-                GLib.idle_add(self.emit, 'playlist-del', playlist_id, None)
+                GLib.idle_add(self.emit, "playlist-del", playlist_id, None)
 
     def add_tracks(self, playlist_id, tracks, notify=True):
         """
@@ -300,11 +322,11 @@ class Playlists(GObject.GObject):
                                 " VALUES (?, ?)",
                                 (playlist_id, track.uri))
                 if notify:
-                    GLib.idle_add(self.emit, 'playlist-add',
+                    GLib.idle_add(self.emit, "playlist-add",
                                   playlist_id, track.id, -1)
             if changed:
                 sql.execute("UPDATE playlists SET mtime=?\
-                             WHERE rowid=?", (datetime.now().strftime('%s'),
+                             WHERE rowid=?", (datetime.now().strftime("%s"),
                                               playlist_id))
                 sql.commit()
 
@@ -320,7 +342,7 @@ class Playlists(GObject.GObject):
                              WHERE uri=?\
                              AND playlist_id=?", (track.uri, playlist_id))
                 if notify:
-                    GLib.idle_add(self.emit, 'playlist-del',
+                    GLib.idle_add(self.emit, "playlist-del",
                                   playlist_id, track.id)
             sql.commit()
 
@@ -333,7 +355,7 @@ class Playlists(GObject.GObject):
             @param up as bool
         """
         try:
-            uri = uri.strip('\n\r')
+            uri = uri.strip("\n\r")
             f = Lio.File.new_for_uri(uri)
             if f.query_exists():
                 if f.query_file_type(Gio.FileQueryInfoFlags.NONE,
@@ -345,7 +367,7 @@ class Playlists(GObject.GObject):
                         try:
                             d = Lio.File.new_for_uri(uri)
                             infos = d.enumerate_children(
-                                'standard::name,standard::type',
+                                "standard::name,standard::type",
                                 Gio.FileQueryInfoFlags.NONE,
                                 None)
                         except Exception as e:
@@ -376,7 +398,7 @@ class Playlists(GObject.GObject):
                         start_idx += 1
                     for track_id in track_ids:
                         playlist_track_ids.insert(start_idx, track_id)
-                        GLib.idle_add(self.emit, 'playlist-add',
+                        GLib.idle_add(self.emit, "playlist-add",
                                       playlist_id, track_id, start_idx)
                         start_idx += 1
                     self.clear(playlist_id, False)
@@ -444,8 +466,8 @@ class Playlists(GObject.GObject):
         """
         try:
             sql = sqlite3.connect(self._DB_PATH, 600.0)
-            sql.execute("ATTACH DATABASE '%s' AS music" % Database.DB_PATH)
-            sql.create_collation('LOCALIZED', LocalizedCollation())
+            sql.execute('ATTACH DATABASE "%s" AS music' % Database.DB_PATH)
+            sql.create_collation("LOCALIZED", LocalizedCollation())
             return sql
         except:
             exit(-1)

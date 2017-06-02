@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -11,10 +11,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import gi
-gi.require_version('WebKit2', '4.0')
+gi.require_version("WebKit2", "4.0")
 from gi.repository import Gtk, WebKit2, GLib
 
-from urllib.parse import urlsplit
+from urllib.parse import urlparse
 
 from lollypop.define import OpenLink
 
@@ -32,51 +32,48 @@ class WebView(Gtk.Stack):
             @param private as bool
         """
         Gtk.Stack.__init__(self)
-        self.connect('destroy', self.__on_destroy)
+        self.connect("destroy", self.__on_destroy)
         self.set_transition_duration(500)
         self.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-        self.__current_domain = ''
-        self.__url = ''
+        self.__current_domain = ""
+        self.__url = ""
         self.__allowed_words = []
         self.__open_links = OpenLink.NEW
         builder = Gtk.Builder()
         # Use ressource from ArtistContent
-        builder.add_from_resource('/org/gnome/Lollypop/InfoContent.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/InfoContent.ui")
         self.__view = WebKit2.WebView()
-        self.__spinner = builder.get_object('spinner')
-        self.add_named(self.__spinner, 'spinner')
-        self.set_visible_child_name('spinner')
-        self.add_named(self.__view, 'view')
-        self.__view.connect('load-changed', self.__on_load_changed)
+        self.__spinner = builder.get_object("spinner")
+        self.add_named(self.__spinner, "spinner")
+        self.set_visible_child_name("spinner")
+        self.add_named(self.__view, "view")
+        self.__view.connect("load-changed", self.__on_load_changed)
         settings = self.__view.get_settings()
         # Private browsing make duckduckgo fail to switch translations
         if private:
-            settings.set_property('enable-private-browsing', True)
-            settings.set_property('print-backgrounds', False)
-        settings.set_property('enable-smooth-scrolling', True)
-        settings.set_property('enable-plugins', False)
-        settings.set_property('enable-fullscreen', False)
-        settings.set_property('enable-html5-database', False)
-        settings.set_property('enable-html5-local-storage', False)
-        settings.set_property('enable-media-stream', False)
-        settings.set_property('enable-mediasource', False)
-        settings.set_property('enable-offline-web-application-cache', False)
-        settings.set_property('enable-page-cache', True)
-        settings.set_property('enable-webaudio', False)
-        settings.set_property('enable-webgl', False)
+            settings.set_property("enable-private-browsing", True)
+            settings.set_property("print-backgrounds", False)
+        settings.set_property("enable-smooth-scrolling", True)
+        settings.set_property("enable-plugins", False)
+        settings.set_property("enable-fullscreen", False)
+        settings.set_property("enable-html5-database", False)
+        settings.set_property("enable-html5-local-storage", False)
+        settings.set_property("enable-media-stream", False)
+        settings.set_property("enable-mediasource", False)
+        settings.set_property("enable-offline-web-application-cache", False)
+        settings.set_property("enable-page-cache", True)
+        settings.set_property("enable-webaudio", False)
+        settings.set_property("enable-webgl", False)
         if mobile:
-            settings.set_property('user-agent',
+            settings.set_property("user-agent",
                                   "Mozilla/5.0 (Linux; Ubuntu 14.04;"
                                   " BlackBerry) AppleWebKit2/537.36 Chromium"
                                   "/35.0.1870.2 Mobile Safari/537.36")
         self.__view.set_settings(settings)
-        # FIXME TLS is broken in WebKit2, don't know how to fix this
-        self.__view.get_context().set_tls_errors_policy(
-                                                WebKit2.TLSErrorsPolicy.IGNORE)
-        self.__view.connect('decide-policy', self.__on_decide_policy)
-        self.__view.connect('context-menu', self.__on_context_menu)
-        self.__view.set_property('hexpand', True)
-        self.__view.set_property('vexpand', True)
+        self.__view.connect("decide-policy", self.__on_decide_policy)
+        self.__view.connect("context-menu", self.__on_context_menu)
+        self.__view.set_property("hexpand", True)
+        self.__view.set_property("vexpand", True)
         self.__view.show()
 
     @property
@@ -88,7 +85,7 @@ class WebView(Gtk.Stack):
 
     def add_word(self, word):
         """
-            Add a word to allowed urls, only urls with this word will
+            Add a word to allowed urls, only urls with this words will
             get a navigation token
         """
         self.__allowed_words.append(word)
@@ -102,7 +99,6 @@ class WebView(Gtk.Stack):
         self.__open_link = open_link
         self.__url = url
         self.__current_domain = self.__get_domain(url)
-        self.__view.grab_focus()
         self.__view.load_uri(url)
 
     def stop(self):
@@ -119,9 +115,8 @@ class WebView(Gtk.Stack):
             Return domain for url
             @param url as str
         """
-        hostname = urlsplit(url)[1]
-        split = hostname.split('.')
-        return split[-2] + "." + split[-1]
+        parsed = urlparse(url)
+        return parsed.netloc
 
     def __on_destroy(self, widget):
         """
@@ -139,11 +134,11 @@ class WebView(Gtk.Stack):
         """
         if event == WebKit2.LoadEvent.STARTED:
             self.set_transition_type(Gtk.StackTransitionType.NONE)
-            self.set_visible_child_name('spinner')
+            self.set_visible_child_name("spinner")
             self.__spinner.start()
             self.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
-        elif event == WebKit2.LoadEvent.FINISHED:
-            self.set_visible_child_name('view')
+        elif event == WebKit2.LoadEvent.COMMITTED:
+            self.set_visible_child_name("view")
             self.__spinner.stop()
 
     def __on_decide_policy(self, view, decision, decision_type):

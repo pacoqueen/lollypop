@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -52,7 +52,7 @@ class QueuePlayer:
         self.set_next()
         self.set_prev()
         if notify:
-            self.emit('queue-changed')
+            self.emit("queue-changed")
 
     def insert_in_queue(self, track_id, pos=0, notify=True):
         """
@@ -77,7 +77,7 @@ class QueuePlayer:
         self.set_next()
         self.set_prev()
         if notify:
-            self.emit('queue-changed')
+            self.emit("queue-changed")
 
     def del_from_queue(self, track_id, notify=True):
         """
@@ -94,7 +94,7 @@ class QueuePlayer:
                 self.set_next()
             self.set_prev()
         if notify:
-            self.emit('queue-changed')
+            self.emit("queue-changed")
 
     def clear_queue(self, notify=True):
         """
@@ -110,17 +110,15 @@ class QueuePlayer:
             self.__backup_next = None
         self.set_prev()
         if notify:
-            self.emit('queue-changed')
+            self.emit("queue-changed")
 
-    def get_queue(self):
+    @property
+    def queue(self):
         """
             Return queue
             @return [ids as int]
         """
-        if self.__queue:
-            return self.__queue
-        else:
-            return []
+        return self.__queue
 
     def track_in_queue(self, track):
         """

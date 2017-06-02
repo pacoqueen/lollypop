@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -30,17 +30,17 @@ class RatingWidget(Gtk.Bin):
         Gtk.Bin.__init__(self)
         self.__object = object
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/RatingWidget.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/RatingWidget.ui")
         builder.connect_signals(self)
 
         self._stars = []
-        self._stars.append(builder.get_object('star0'))
-        self._stars.append(builder.get_object('star1'))
-        self._stars.append(builder.get_object('star2'))
-        self._stars.append(builder.get_object('star3'))
-        self._stars.append(builder.get_object('star4'))
+        self._stars.append(builder.get_object("star0"))
+        self._stars.append(builder.get_object("star1"))
+        self._stars.append(builder.get_object("star2"))
+        self._stars.append(builder.get_object("star3"))
+        self._stars.append(builder.get_object("star4"))
         self._on_leave_notify(None, None)
-        self.add(builder.get_object('widget'))
+        self.add(builder.get_object("widget"))
 
 #######################
 # PROTECTED           #
@@ -60,9 +60,9 @@ class RatingWidget(Gtk.Bin):
         for star in self._stars:
             if found:
                 star.set_opacity(0.2)
-                star.get_style_context().remove_class('selected')
+                star.get_style_context().remove_class("selected")
             else:
-                star.get_style_context().add_class('selected')
+                star.get_style_context().add_class("selected")
                 star.set_opacity(0.8)
             if star == event_star:
                 found = True
@@ -81,53 +81,53 @@ class RatingWidget(Gtk.Bin):
         if stars < 1:
             for i in range(5):
                 self._stars[i].set_opacity(0.2)
-                self._stars[i].get_style_context().remove_class('selected')
+                self._stars[i].get_style_context().remove_class("selected")
         else:
             if stars >= 1:
                 if user_rating:
-                    self._stars[0].get_style_context().add_class('selected')
+                    self._stars[0].get_style_context().add_class("selected")
                 else:
-                    self._stars[0].get_style_context().remove_class('selected')
+                    self._stars[0].get_style_context().remove_class("selected")
                 self._stars[0].set_opacity(0.8)
             else:
                 self._stars[0].set_opacity(0.2)
-                self._stars[0].get_style_context().remove_class('selected')
+                self._stars[0].get_style_context().remove_class("selected")
             if stars >= 2:
                 if user_rating:
-                    self._stars[1].get_style_context().add_class('selected')
+                    self._stars[1].get_style_context().add_class("selected")
                 else:
-                    self._stars[1].get_style_context().remove_class('selected')
+                    self._stars[1].get_style_context().remove_class("selected")
                 self._stars[1].set_opacity(0.8)
             else:
                 self._stars[1].set_opacity(0.2)
-                self._stars[1].get_style_context().remove_class('selected')
+                self._stars[1].get_style_context().remove_class("selected")
             if stars >= 3:
                 if user_rating:
-                    self._stars[2].get_style_context().add_class('selected')
+                    self._stars[2].get_style_context().add_class("selected")
                 else:
-                    self._stars[2].get_style_context().remove_class('selected')
+                    self._stars[2].get_style_context().remove_class("selected")
                 self._stars[2].set_opacity(0.8)
             else:
                 self._stars[2].set_opacity(0.2)
-                self._stars[2].get_style_context().remove_class('selected')
+                self._stars[2].get_style_context().remove_class("selected")
             if stars >= 4:
                 if user_rating:
-                    self._stars[3].get_style_context().add_class('selected')
+                    self._stars[3].get_style_context().add_class("selected")
                 else:
-                    self._stars[3].get_style_context().remove_class('selected')
+                    self._stars[3].get_style_context().remove_class("selected")
                 self._stars[3].set_opacity(0.8)
             else:
                 self._stars[3].set_opacity(0.2)
-                self._stars[3].get_style_context().remove_class('selected')
+                self._stars[3].get_style_context().remove_class("selected")
             if stars >= 4.75:
                 if user_rating:
-                    self._stars[4].get_style_context().add_class('selected')
+                    self._stars[4].get_style_context().add_class("selected")
                 else:
-                    self._stars[4].get_style_context().remove_class('selected')
+                    self._stars[4].get_style_context().remove_class("selected")
                 self._stars[4].set_opacity(0.8)
             else:
                 self._stars[4].set_opacity(0.2)
-                self._stars[4].get_style_context().remove_class('selected')
+                self._stars[4].get_style_context().remove_class("selected")
 
     def _on_button_press(self, widget, event):
         """
@@ -154,11 +154,13 @@ class RatingWidget(Gtk.Bin):
         else:
             self.__object.set_popularity(pop)
         if isinstance(self.__object, Track):
-            Lp().player.emit('rate-changed')
+            Lp().player.emit("rate-changed")
         # Save to tags if needed
-        if Lp().settings.get_value('save-to-tags') and\
+        # FIXME We really need a radio object
+        if Lp().settings.get_value("save-to-tags") and\
                 GLib.find_program_in_path("kid3-cli") is not None and\
                 isinstance(self.__object, Track) and\
+                self.__object.id >= 0 and\
                 not self.__object.is_web:
             if pop == 0:
                 value = 0
@@ -177,12 +179,12 @@ class RatingWidget(Gtk.Bin):
                 bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
                 proxy = Gio.DBusProxy.new_sync(
                                         bus, Gio.DBusProxyFlags.NONE, None,
-                                        'org.gnome.Lollypop.Portal',
-                                        '/org/gnome/LollypopPortal',
-                                        'org.gnome.Lollypop.Portal', None)
-                proxy.call_sync('SetPopularity',
+                                        "org.gnome.Lollypop.Portal",
+                                        "/org/gnome/LollypopPortal",
+                                        "org.gnome.Lollypop.Portal", None)
+                proxy.call_sync("SetPopularity",
                                 GLib.Variant(
-                                 '(is)', (value,
+                                 "(is)", (value,
                                           path)),
                                 Gio.DBusCallFlags.NO_AUTO_START,
                                 500, None)

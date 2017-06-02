@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +17,7 @@ from re import match
 from gettext import gettext as _
 
 from lollypop.define import Lp
-from lollypop.utils import format_artist_name
+from lollypop.utils import format_artist_name, decode_all
 from lollypop.lio import Lio
 
 
@@ -70,8 +70,9 @@ class TagReader(Discoverer):
         """
         if tags is None:
             return GLib.path_get_basename(filepath)
-        (exists, title) = tags.get_string_index('title', 0)
-        if not exists:
+        (exists, title) = tags.get_string_index("title", 0)
+        # We need to check tag is not just spaces
+        if not exists or not title.strip(" "):
             title = GLib.path_get_basename(filepath)
         return title
 
@@ -84,9 +85,10 @@ class TagReader(Discoverer):
         if tags is None:
             return _("Unknown")
         artists = []
-        for i in range(tags.get_tag_size('artist')):
-            (exists, read) = tags.get_string_index('artist', i)
-            if exists:
+        for i in range(tags.get_tag_size("artist")):
+            (exists, read) = tags.get_string_index("artist", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 artists.append(read)
         return "; ".join(artists)
 
@@ -99,9 +101,10 @@ class TagReader(Discoverer):
         if tags is None:
             return _("Unknown")
         composers = []
-        for i in range(tags.get_tag_size('composer')):
-            (exists, read) = tags.get_string_index('composer', i)
-            if exists:
+        for i in range(tags.get_tag_size("composer")):
+            (exists, read) = tags.get_string_index("composer", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 composers.append(read)
         return "; ".join(composers)
 
@@ -114,9 +117,10 @@ class TagReader(Discoverer):
         if tags is None:
             return _("Unknown")
         performers = []
-        for i in range(tags.get_tag_size('performer')):
-            (exists, read) = tags.get_string_index('performer', i)
-            if exists:
+        for i in range(tags.get_tag_size("performer")):
+            (exists, read) = tags.get_string_index("performer", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 performers.append(read)
         return "; ".join(performers)
 
@@ -129,9 +133,10 @@ class TagReader(Discoverer):
         if tags is None:
             return ""
         sortnames = []
-        for i in range(tags.get_tag_size('artist-sortname')):
-            (exists, read) = tags.get_string_index('artist-sortname', i)
-            if exists:
+        for i in range(tags.get_tag_size("artist-sortname")):
+            (exists, read) = tags.get_string_index("artist-sortname", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 sortnames.append(read)
         return "; ".join(sortnames)
 
@@ -144,9 +149,10 @@ class TagReader(Discoverer):
         if tags is None:
             return ""
         sortnames = []
-        for i in range(tags.get_tag_size('album-artist-sortname')):
-            (exists, read) = tags.get_string_index('album-artist-sortname', i)
-            if exists:
+        for i in range(tags.get_tag_size("album-artist-sortname")):
+            (exists, read) = tags.get_string_index("album-artist-sortname", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 sortnames.append(read)
         return "; ".join(sortnames)
 
@@ -159,9 +165,10 @@ class TagReader(Discoverer):
         if tags is None:
             return _("Unknown")
         artists = []
-        for i in range(tags.get_tag_size('album-artist')):
-            (exists, read) = tags.get_string_index('album-artist', i)
-            if exists:
+        for i in range(tags.get_tag_size("album-artist")):
+            (exists, read) = tags.get_string_index("album-artist", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 artists.append(read)
         return "; ".join(artists)
 
@@ -173,8 +180,9 @@ class TagReader(Discoverer):
         """
         if tags is None:
             return _("Unknown")
-        (exists, album_name) = tags.get_string_index('album', 0)
-        if not exists:
+        (exists, album_name) = tags.get_string_index("album", 0)
+        # We need to check tag is not just spaces
+        if not exists or not album_name.strip(" "):
             album_name = _("Unknown")
         return album_name
 
@@ -187,9 +195,10 @@ class TagReader(Discoverer):
         if tags is None:
             return _("Unknown")
         genres = []
-        for i in range(tags.get_tag_size('genre')):
-            (exists, read) = tags.get_string_index('genre', i)
-            if exists:
+        for i in range(tags.get_tag_size("genre")):
+            (exists, read) = tags.get_string_index("genre", i)
+            # We need to check tag is not just spaces
+            if exists and read.strip(" "):
                 genres.append(read)
         if not genres:
             return _("Unknown")
@@ -204,8 +213,8 @@ class TagReader(Discoverer):
         if tags is None:
             return 0
         discname = ""
-        for i in range(tags.get_tag_size('extended-comment')):
-            (exists, read) = tags.get_string_index('extended-comment', i)
+        for i in range(tags.get_tag_size("extended-comment")):
+            (exists, read) = tags.get_string_index("extended-comment", i)
             if exists and read.startswith("DISCSUBTITLE"):
                 discname = read.replace("DISCSUBTITLE=", "")
                 break
@@ -219,7 +228,7 @@ class TagReader(Discoverer):
         """
         if tags is None:
             return 0
-        (exists, discnumber) = tags.get_uint_index('album-disc-number', 0)
+        (exists, discnumber) = tags.get_uint_index("album-disc-number", 0)
         if not exists:
             discnumber = 0
         return discnumber
@@ -233,10 +242,10 @@ class TagReader(Discoverer):
         """
         if tags is None:
             return 0
-        (exists, tracknumber) = tags.get_uint_index('track-number', 0)
+        (exists, tracknumber) = tags.get_uint_index("track-number", 0)
         if not exists:
             # Guess from filename
-            m = match('^([0-9]*)[ ]*-', filename)
+            m = match("^([0-9]*)[ ]*-", filename)
             if m:
                 try:
                     tracknumber = int(m.group(1))
@@ -254,9 +263,9 @@ class TagReader(Discoverer):
         """
         if tags is None:
             return None
-        (exists, date) = tags.get_date_index('date', 0)
+        (exists, date) = tags.get_date_index("date", 0)
         if not exists:
-            (exists, date) = tags.get_date_time_index('datetime', 0)
+            (exists, date) = tags.get_date_time_index("datetime", 0)
         if exists:
             year = date.get_year()
         else:
@@ -271,19 +280,19 @@ class TagReader(Discoverer):
         """
         def get_id3():
             try:
-                size = tags.get_tag_size('private-id3v2-frame')
+                size = tags.get_tag_size("private-id3v2-frame")
                 for i in range(0, size):
                     (exists, sample) = tags.get_sample_index(
-                                                         'private-id3v2-frame',
+                                                         "private-id3v2-frame",
                                                          i)
                     if not exists:
                         continue
                     (exists, m) = sample.get_buffer().map(Gst.MapFlags.READ)
                     if not exists:
                         continue
-                    string = m.data.decode('utf-8')
-                    if string.startswith('TDOR'):
-                        split = string.split('\x00')
+                    string = m.data.decode("utf-8")
+                    if string.startswith("TDOR"):
+                        split = string.split("\x00")
                         return int(split[-1][:4])
             except:
                 pass
@@ -291,10 +300,10 @@ class TagReader(Discoverer):
 
         def get_ogg():
             try:
-                size = tags.get_tag_size('extended-comment')
+                size = tags.get_tag_size("extended-comment")
                 for i in range(0, size):
                     (exists, sample) = tags.get_string_index(
-                                                         'extended-comment',
+                                                         "extended-comment",
                                                          i)
                     if not exists or not sample.startswith("ORIGINALDATE="):
                         continue
@@ -319,45 +328,45 @@ class TagReader(Discoverer):
         """
         def get_mp4():
             try:
-                (exists, sample) = tags.get_string_index('lyrics', 0)
+                (exists, sample) = tags.get_string_index("lyrics", 0)
                 if exists:
                     return sample
-            except:
-                pass
+            except Exception as e:
+                print("TagReader::get_mp4()", e)
             return ""
 
         def get_id3():
             try:
-                size = tags.get_tag_size('private-id3v2-frame')
+                size = tags.get_tag_size("private-id3v2-frame")
                 for i in range(0, size):
                     (exists, sample) = tags.get_sample_index(
-                                                         'private-id3v2-frame',
+                                                         "private-id3v2-frame",
                                                          i)
                     if not exists:
                         continue
                     (exists, m) = sample.get_buffer().map(Gst.MapFlags.READ)
                     if not exists:
                         continue
-                    string = m.data.decode('utf-8')
-                    if string.startswith('USLT'):
-                        split = string.split('\x00')
-                        return split[-1:][0]
-            except:
-                pass
+                    string = decode_all(m.data)
+                    if string.startswith("USLT"):
+                        split = string.split("\x00")
+                        return "".join(split[5:-1])
+            except Exception as e:
+                print("TagReader::get_id3()", e)
             return ""
 
         def get_ogg():
             try:
-                size = tags.get_tag_size('extended-comment')
+                size = tags.get_tag_size("extended-comment")
                 for i in range(0, size):
                     (exists, sample) = tags.get_string_index(
-                                                         'extended-comment',
+                                                         "extended-comment",
                                                          i)
                     if not exists or not sample.startswith("LYRICS="):
                         continue
                     return sample[7:]
-            except:
-                pass
+            except Exception as e:
+                print("TagReader::get_ogg()", e)
             return ""
 
         if tags is None:
@@ -379,12 +388,12 @@ class TagReader(Discoverer):
             @commit needed
         """
         artist_ids = []
-        sortsplit = sortnames.split(';')
+        sortsplit = sortnames.split(";")
         sortlen = len(sortsplit)
         i = 0
-        for artist in artists.split(';'):
+        for artist in artists.split(";"):
             artist = artist.strip()
-            if artist != '':
+            if artist != "":
                 # Get artist id, add it if missing
                 artist_id = Lp().artists.get_id(artist)
                 if i >= sortlen or sortsplit[i] == "":
@@ -410,12 +419,12 @@ class TagReader(Discoverer):
             @commit needed
         """
         artist_ids = []
-        sortsplit = sortnames.split(';')
+        sortsplit = sortnames.split(";")
         sortlen = len(sortsplit)
         i = 0
-        for artist in artists.split(';'):
+        for artist in artists.split(";"):
             artist = artist.strip()
-            if artist != '':
+            if artist != "":
                 # Get album artist id, add it if missing
                 artist_id = Lp().artists.get_id(artist)
                 if i >= sortlen or sortsplit[i] == "":
@@ -432,18 +441,18 @@ class TagReader(Discoverer):
                 artist_ids.append(artist_id)
         return artist_ids
 
-    def add_genres(self, genres, album_id):
+    def add_genres(self, genres):
         """
             Add genres to db
-            @param genres as [string]
+            @param genres as string
             @return genre ids as [int]
             @commit needed
         """
         # Get all genre ids
         genre_ids = []
-        for genre in genres.split(';'):
+        for genre in genres.split(";"):
             genre = genre.strip()
-            if genre != '':
+            if genre != "":
                 # Get genre id, add genre if missing
                 genre_id = Lp().genres.get_id(genre)
                 if genre_id is None:
@@ -452,7 +461,7 @@ class TagReader(Discoverer):
         return genre_ids
 
     def add_album(self, album_name, artist_ids,
-                  uri, loved, popularity, rate, mtime, remote):
+                  uri, loved, popularity, rate, remote):
         """
             Add album to db
             @param album name as string
@@ -462,7 +471,6 @@ class TagReader(Discoverer):
             @param loved as bool
             @param popularity as int
             @param rate as int
-            @param mtime as int
             @param remote as bool
             @return (album id as int, new as bool)
             @commit needed
@@ -478,19 +486,20 @@ class TagReader(Discoverer):
         if album_id is None:
             new = True
             album_id = Lp().albums.add(album_name, artist_ids, parent_uri,
-                                       loved, popularity, rate, mtime)
-        # Now we have our album id, check if path doesn't change
+                                       loved, popularity, rate)
+        # Now we have our album id, check if path doesn"t change
         if Lp().albums.get_uri(album_id) != parent_uri:
             Lp().albums.set_uri(album_id, parent_uri)
 
         return (album_id, new)
 
-    def update_album(self, album_id, artist_ids, genre_ids, year):
+    def update_album(self, album_id, artist_ids, genre_ids, mtime, year):
         """
             Set album artists
             @param album id as int
             @param artist ids as [int]
             @param genre ids as [int]
+            @param mtime as int
             @param year as int
             @commit needed
         """
@@ -501,22 +510,24 @@ class TagReader(Discoverer):
                                     Lp().albums.calculate_artist_ids(album_id))
         # Update album genres
         for genre_id in genre_ids:
-            Lp().albums.add_genre(album_id, genre_id)
+            Lp().albums.add_genre(album_id, genre_id, mtime)
 
         # Update year based on tracks
         year = Lp().albums.get_year_from_tracks(album_id)
         Lp().albums.set_year(album_id, year)
 
-    def update_track(self, track_id, artist_ids, genre_ids):
+    def update_track(self, track_id, artist_ids, genre_ids, mtime):
         """
             Set track artists/genres
             @param track id as int
             @param artist ids as [int]
             @param genre ids as [int]
+            @param mtime as int
+            @param popularity as int
             @commit needed
         """
         # Set artists/genres for track
         for artist_id in artist_ids:
             Lp().tracks.add_artist(track_id, artist_id)
         for genre_id in genre_ids:
-            Lp().tracks.add_genre(track_id, genre_id)
+            Lp().tracks.add_genre(track_id, genre_id, mtime)

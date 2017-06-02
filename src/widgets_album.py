@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -37,7 +37,7 @@ class BaseWidget:
         self._artwork_button = None
         self._action_button = None
         self._show_overlay = False
-        self._lock_overlay = False
+        self._lock_overlay = True
         self._timeout_id = None
         self.__parent_filter = False
         self._overlay_orientation = Gtk.Orientation.HORIZONTAL
@@ -112,13 +112,13 @@ class BaseWidget:
         """
             Set play all image based on current shuffle status
         """
-        if Lp().settings.get_enum('shuffle') == Shuffle.NONE:
+        if Lp().settings.get_enum("shuffle") == Shuffle.NONE:
             self._play_all_button.set_from_icon_name(
-                                        'media-playlist-consecutive-symbolic',
+                                        "media-playlist-consecutive-symbolic",
                                         Gtk.IconSize.BUTTON)
         else:
             self._play_all_button.set_from_icon_name(
-                                        'media-playlist-shuffle-symbolic',
+                                        "media-playlist-shuffle-symbolic",
                                         Gtk.IconSize.BUTTON)
 
     def _show_overlay_func(self, set):
@@ -130,7 +130,7 @@ class BaseWidget:
            self._show_overlay == set:
             return
         self._show_overlay = set
-        self.emit('overlayed', set)
+        self.emit("overlayed", set)
         if set:
             if Lp().player.locked:
                 opacity = 0.2
@@ -239,7 +239,7 @@ class BaseWidget:
         """
         popover = CoversPopover(self._album)
         popover.set_relative_to(widget)
-        popover.connect('closed', self._on_pop_cover_closed)
+        popover.connect("closed", self._on_pop_cover_closed)
         self._lock_overlay = True
         popover.show()
         return True
@@ -288,11 +288,11 @@ class BaseWidget:
             Show append button if append, else remove button
         """
         if append:
-            self._action_button.set_from_icon_name('list-add-symbolic',
+            self._action_button.set_from_icon_name("list-add-symbolic",
                                                    Gtk.IconSize.BUTTON)
             self._action_event.set_tooltip_text(_("Append"))
         else:
-            self._action_button.set_from_icon_name('list-remove-symbolic',
+            self._action_button.set_from_icon_name("list-remove-symbolic",
                                                    Gtk.IconSize.BUTTON)
             self._action_event.set_tooltip_text(_("Remove"))
 
@@ -313,8 +313,7 @@ class AlbumWidget(BaseWidget):
         Album widget
     """
 
-    def __init__(self, album_id, genre_ids=[],
-                 artist_ids=[], art_size=ArtSize.BIG):
+    def __init__(self, album_id, genre_ids, artist_ids, art_size):
         """
             Init Album widget
         """
@@ -322,8 +321,8 @@ class AlbumWidget(BaseWidget):
         self._album = Album(album_id, genre_ids)
         self._filter_ids = artist_ids
         self._art_size = art_size
-        self.connect('destroy', self.__on_destroy)
-        self._scan_signal = Lp().scanner.connect('album-updated',
+        self.connect("destroy", self.__on_destroy)
+        self._scan_signal = Lp().scanner.connect("album-updated",
                                                  self._on_album_updated)
 
     @property
@@ -398,10 +397,10 @@ class AlbumWidget(BaseWidget):
         if selected != self._selected:
             if selected:
                 self._cover.get_style_context().add_class(
-                                                    'cover-frame-selected')
+                                                    "cover-frame-selected")
             else:
                 self._cover.get_style_context().remove_class(
-                                                    'cover-frame-selected')
+                                                    "cover-frame-selected")
 
 #######################
 # PROTECTED           #

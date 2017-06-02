@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -12,11 +12,11 @@
 
 from gi.repository import Gtk, Gdk
 
-from lollypop.controllers import InfosController
+from lollypop.controllers import InfoController
 from lollypop.define import Lp, WindowSize
 
 
-class MiniPlayer(Gtk.Bin, InfosController):
+class MiniPlayer(Gtk.Bin, InfoController):
     """
         Toolbar end
     """
@@ -26,18 +26,18 @@ class MiniPlayer(Gtk.Bin, InfosController):
             Init toolbar
         """
         Gtk.Bin.__init__(self)
-        InfosController.__init__(self, WindowSize.SMALL)
+        InfoController.__init__(self, WindowSize.SMALL)
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/MiniPlayer.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/MiniPlayer.ui")
         builder.connect_signals(self)
-        self.__grid = builder.get_object('grid')
-        self._title_label = builder.get_object('title')
-        self._artist_label = builder.get_object('artist')
-        self._cover = builder.get_object('cover')
-        self._signal_id = Lp().player.connect('current-changed',
+        self.__grid = builder.get_object("grid")
+        self._title_label = builder.get_object("title")
+        self._artist_label = builder.get_object("artist")
+        self._cover = builder.get_object("cover")
+        self._signal_id = Lp().player.connect("current-changed",
                                               self.on_current_changed)
         self.on_current_changed(Lp().player)
-        self.add(builder.get_object('widget'))
+        self.add(builder.get_object("widget"))
 
     def do_get_preferred_height(self):
         """

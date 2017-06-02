@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -33,7 +33,7 @@ class WebJmg90:
             f = Lio.File.new_for_uri(uri)
             (status, data, tag) = f.load_contents(None)
             if status:
-                return data.decode('utf-8')
+                return data.decode("utf-8")
         except IndexError:
             pass
         except Exception as e:
@@ -68,7 +68,8 @@ class WebJmg90:
             @return jpg id as str
         """
         # Try to handle compilations (itunes one)
-        if item.artists[0].lower() == "various artists":
+        unwanted = ["variout artists", "multi-interprètes"]
+        if item.artists[0].lower() in unwanted:
             if len(item.artists) > 1:
                 artist = item.artists[1]
             else:
@@ -77,26 +78,25 @@ class WebJmg90:
             artist = item.artists[0]
         unescaped = "%s %s" % (artist,
                                item.name)
-        for c in ['/', '?', '!']:
+        for c in ["/", "?", "!"]:
             if c in unescaped:
-                unescaped = unescaped.replace(c, ' ')
+                unescaped = unescaped.replace(c, " ")
 
         search = GLib.uri_escape_string(unescaped,
-                                        '',
+                                        "",
                                         True)
         try:
-            # Strip /? as API doesn't like it
             f = Lio.File.new_for_uri("http://app.jgm90.com/cmapi/search/"
-                                     "%s/1/10" % search.strip('/?'))
+                                     "%s/1/10" % search)
             (status, data, tag) = f.load_contents(None)
             if status:
-                decode = json.loads(data.decode('utf-8'))
-                for song in decode['result']['songs']:
+                decode = json.loads(data.decode("utf-8"))
+                for song in decode["result"]["songs"]:
                     try:
                         song_artist = escape(
-                                            song['artists'][0]['name'].lower())
+                                            song["artists"][0]["name"].lower())
                         if song_artist == escape(artist.lower()):
-                            return song['id']
+                            return song["id"]
                     except Exception as e:
                         print("WebJmg90::__get_jmg_id():", e)
         except IndexError:

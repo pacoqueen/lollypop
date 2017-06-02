@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -12,12 +12,12 @@
 
 from gi.repository import Gtk, Gdk, GLib
 
-from lollypop.controllers import InfosController
+from lollypop.controllers import InfoController
 from lollypop.touch_helper import TouchHelper
 from lollypop.define import Lp, Type, ArtSize
 
 
-class ToolbarInfo(Gtk.Bin, InfosController):
+class ToolbarInfo(Gtk.Bin, InfoController):
     """
         Informations toolbar
     """
@@ -27,42 +27,42 @@ class ToolbarInfo(Gtk.Bin, InfosController):
             Init toolbar
         """
         Gtk.Bin.__init__(self)
-        InfosController.__init__(self, ArtSize.SMALL)
+        InfoController.__init__(self, ArtSize.SMALL)
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/ToolbarInfo.ui')
+        builder.add_from_resource("/org/gnome/Lollypop/ToolbarInfo.ui")
         builder.connect_signals(self)
         self.__pop_tunein = None
         self.__pop_info = None
         self.__timeout_id = None
         self.__width = 0
 
-        self._infobox = builder.get_object('info')
+        self._infobox = builder.get_object("info")
         self.add(self._infobox)
 
         self.__helper = TouchHelper(self._infobox, None, None)
         self.__helper.set_long_func(self.__on_info_long)
         self.__helper.set_short_func(self.__on_info_short)
 
-        self._spinner = builder.get_object('spinner')
+        self._spinner = builder.get_object("spinner")
 
-        self.__labels = builder.get_object('nowplaying_labels')
-        self.__labels.connect('query-tooltip', self.__on_query_tooltip)
-        self.__labels.set_property('has-tooltip', True)
+        self.__labels = builder.get_object("nowplaying_labels")
+        self.__labels.connect("query-tooltip", self.__on_query_tooltip)
+        self.__labels.set_property("has-tooltip", True)
 
-        self._title_label = builder.get_object('title')
-        self._artist_label = builder.get_object('artist')
-        self._cover = builder.get_object('cover')
-        self._cover.set_property('has-tooltip', True)
+        self._title_label = builder.get_object("title")
+        self._artist_label = builder.get_object("artist")
+        self._cover = builder.get_object("cover")
+        self._cover.set_property("has-tooltip", True)
         # Since GTK 3.20, we can set cover full height
         if Gtk.get_minor_version() > 18:
-            self._cover.get_style_context().add_class('toolbar-cover-frame')
+            self._cover.get_style_context().add_class("toolbar-cover-frame")
         else:
-            self._cover.get_style_context().add_class('small-cover-frame')
+            self._cover.get_style_context().add_class("small-cover-frame")
 
-        self.connect('realize', self.__on_realize)
-        Lp().player.connect('loading-changed', self.__on_loading_changed)
-        Lp().art.connect('album-artwork-changed', self.__update_cover)
-        Lp().art.connect('radio-artwork-changed', self.__update_logo)
+        self.connect("realize", self.__on_realize)
+        Lp().player.connect("loading-changed", self.__on_loading_changed)
+        Lp().art.connect("album-artwork-changed", self.__update_cover)
+        Lp().art.connect("radio-artwork-changed", self.__update_logo)
 
     def do_get_preferred_width(self):
         """
@@ -84,7 +84,7 @@ class ToolbarInfo(Gtk.Bin, InfosController):
             @param width as int
         """
         self.__width = width
-        self.set_property('width-request', width)
+        self.set_property("width-request", width)
 
 #######################
 # PROTECTED           #
@@ -149,19 +149,16 @@ class ToolbarInfo(Gtk.Bin, InfosController):
             expopover.populate()
             expopover.show()
         elif Lp().player.current_track.id is not None:
+            if self.__pop_info is None:
+                from lollypop.pop_info import InfoPopover
+                self.__pop_info = InfoPopover([])
+                self.__pop_info.set_relative_to(self._infobox)
             if Lp().player.current_track.id == Type.RADIOS:
-                if self.__pop_tunein is None:
-                    from lollypop.pop_tunein import TuneinPopover
-                    self.__pop_tunein = TuneinPopover()
-                    self.__pop_tunein.populate()
-                    self.__pop_tunein.set_relative_to(self._infobox)
-                self.__pop_tunein.show()
+                view_type = Type.RADIOS
             else:
-                if self.__pop_info is None:
-                    from lollypop.pop_info import InfoPopover
-                    self.__pop_info = InfoPopover()
-                    self.__pop_info.set_relative_to(self._infobox)
-                self.__pop_info.show()
+                view_type = Type.ALBUMS
+            self.__pop_info.set_view_type(view_type)
+            self.__pop_info.show()
 
     def __on_loading_changed(self, player, show):
         """

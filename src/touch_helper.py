@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -30,11 +30,11 @@ class TouchHelper(GObject.GObject):
         """
         GObject.GObject.__init__(self)
         self.__timeout_id = None
-        widget.connect('button-press-event', self.__on_button_press)
-        widget.connect('button-release-event', self.__on_button_release)
+        widget.connect("button-press-event", self.__on_button_press)
+        widget.connect("button-release-event", self.__on_button_release)
         if action is not None:
             new_action = Gio.SimpleAction.new(action, None)
-            new_action.connect('activate', self.__on_action_activate)
+            new_action.connect("activate", self.__on_action_activate)
             Lp().add_action(new_action)
             Lp().set_accels_for_action("app.%s" % action, [shortcut])
 

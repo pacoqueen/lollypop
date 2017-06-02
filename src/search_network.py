@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -23,7 +23,7 @@ class NetworkSearch(SpotifySearch, ItunesSearch, GObject.GObject):
         Search provider over network
     """
     __gsignals__ = {
-        'item-found': (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "item-found": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self):
@@ -55,18 +55,32 @@ class NetworkSearch(SpotifySearch, ItunesSearch, GObject.GObject):
     def stop(self):
         self._cancel.cancel()
 
-    def do(self, name):
+    def do_tracks(self, name):
         """
-            Return tracks and albums containing name
+            Populate items with tracks containing name
             @param name as str
             @return tracks/albums as [SearchItem]
         """
         if get_network_available():
-            if Lp().settings.get_value('search-itunes'):
+            if Lp().settings.get_value("search-itunes"):
+                ItunesSearch.tracks(self, name)
+            if Lp().settings.get_value("search-spotify"):
+                SpotifySearch.tracks(self, name)
+        self._finished = True
+        GLib.idle_add(self.emit, "item-found")
+
+    def do(self, name):
+        """
+            Populate items with albums/tracks containing name
+            @param name as str
+            @return tracks/albums as [SearchItem]
+        """
+        if get_network_available():
+            if Lp().settings.get_value("search-itunes"):
                 ItunesSearch.albums(self, name)
                 ItunesSearch.tracks(self, name)
-            if Lp().settings.get_value('search-spotify'):
+            if Lp().settings.get_value("search-spotify"):
                 SpotifySearch.albums(self, name)
                 SpotifySearch.tracks(self, name)
         self._finished = True
-        GLib.idle_add(self.emit, 'item-found')
+        GLib.idle_add(self.emit, "item-found")

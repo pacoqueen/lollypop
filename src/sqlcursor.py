@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # Copyright (c) 2015 Jean-Philippe Braun <eon@patapon.info>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,14 @@ class SqlCursor:
         """
         name = current_thread().getName() + obj.__class__.__name__
         Lp().cursors[name] = obj.get_cursor()
+
+    def remove(obj):
+        """
+            Remove cursor to thread list
+            Raise an exception if cursor already exists
+        """
+        name = current_thread().getName() + obj.__class__.__name__
+        del Lp().cursors[name]
 
     def __init__(self, obj):
         """

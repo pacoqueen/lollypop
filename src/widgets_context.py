@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -40,9 +40,9 @@ class HoverWidget(Gtk.EventBox):
         image.show()
         self.add(image)
         self.set_opacity(0.2)
-        self.connect('enter-notify-event', self.__on_enter_notify)
-        self.connect('leave-notify-event', self.__on_leave_notify)
-        self.connect('button-press-event', self.__on_button_press)
+        self.connect("enter-notify-event", self.__on_enter_notify)
+        self.connect("leave-notify-event", self.__on_leave_notify)
+        self.connect("button-press-event", self.__on_button_press)
 
 #######################
 # PRIVATE             #
@@ -88,18 +88,17 @@ class ContextWidget(Gtk.Grid):
         self.__object = object
         self.__button = button
 
-        can_launch = False
-
         if self.__object.is_web:
-            if self.__object.genre_ids == [Type.CHARTS]:
+            if Type.CHARTS in self.__object.genre_ids:
                 if isinstance(self.__object, Album):
-                    save = HoverWidget('document-save-symbolic',
+                    save = HoverWidget("document-save-symbolic",
                                        self.__save_object)
                     save.set_tooltip_text(_("Save into collection"))
                     save.set_margin_end(10)
                     save.show()
+                    self.add(save)
             else:
-                trash = HoverWidget('user-trash-symbolic',
+                trash = HoverWidget("user-trash-symbolic",
                                     self.__remove_object)
                 if isinstance(self.__object, Album):
                     trash.set_tooltip_text(_("Remove album"))
@@ -107,27 +106,16 @@ class ContextWidget(Gtk.Grid):
                     trash.set_tooltip_text(_("Remove track"))
                 trash.set_margin_end(10)
                 trash.show()
+                self.add(trash)
         else:
             # Check portal for tag editor
             try:
-                bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-                proxy = Gio.DBusProxy.new_sync(
-                                            bus, Gio.DBusProxyFlags.NONE, None,
-                                            'org.gnome.Lollypop.Portal',
-                                            '/org/gnome/LollypopPortal',
-                                            'org.gnome.Lollypop.Portal', None)
-                can_launch = proxy.call_sync('CanLaunchTagEditor', None,
-                                             Gio.DBusCallFlags.NO_AUTO_START,
-                                             500, None)[0]
-            except:
-                print("You are missing lollypop-portal: "
-                      "https://github.com/gnumdk/lollypop-portal")
-            if can_launch:
-                edit = HoverWidget('document-properties-symbolic',
-                                   self.__edit_tags)
-                edit.set_tooltip_text(_("Modify information"))
-                edit.set_margin_end(10)
-                edit.show()
+                Gio.bus_get(Gio.BusType.SESSION, None,
+                            self.__on_get_bus, "CanLaunchTagEditor",
+                            None,
+                            self.__on_can_launch_tag_editor)
+            except Exception as e:
+                print("ContextWidget::__init__():", e)
             # Open directory
             opendir = HoverWidget('document-open',
                                   self.__open_dir)
@@ -135,73 +123,70 @@ class ContextWidget(Gtk.Grid):
             opendir.set_margin_end(10)
             opendir.show()
 
-        playlist = HoverWidget('view-list-symbolic',
-                               self.__show_playlist_manager)
-        playlist.set_tooltip_text(_("Playlists"))
-        playlist.show()
+            self.__edit = HoverWidget("document-properties-symbolic",
+                                      self.__edit_tags)
+            self.__edit.set_tooltip_text(_("Modify information"))
+            self.__edit.set_margin_end(10)
+            self.add(self.__edit)
+
+        if Type.CHARTS not in self.__object.genre_ids:
+            playlist = HoverWidget("view-list-symbolic",
+                                   self.__show_playlist_manager)
+            playlist.set_tooltip_text(_("Add to playlist"))
+            playlist.show()
+            self.add(playlist)
 
         if isinstance(self.__object, Album):
             if Lp().player.album_in_queue(self.__object):
-                queue = HoverWidget('list-remove-symbolic',
+                queue = HoverWidget("list-remove-symbolic",
                                     self.__add_to_queue)
                 queue.set_tooltip_text(_("Remove from queue"))
             else:
-                queue = HoverWidget('list-add-symbolic', self.__add_to_queue)
+                queue = HoverWidget("list-add-symbolic", self.__add_to_queue)
                 queue.set_tooltip_text(_("Add to queue"))
             queue.set_margin_start(10)
             queue.show()
+            self.add(queue)
         else:
-            rating = RatingWidget(object)
-            rating.set_margin_top(5)
-            rating.set_margin_end(10)
-            rating.set_margin_bottom(5)
-            rating.set_property('halign', Gtk.Align.END)
-            rating.set_property('hexpand', True)
-            rating.show()
-
-            loved = LovedWidget(object)
-            loved.set_margin_end(5)
-            loved.set_margin_top(5)
-            loved.set_margin_bottom(5)
-            loved.show()
-
             if self.__object.is_web:
                 web = Gtk.LinkButton(self.__object.uri)
-                icon = Gtk.Image.new_from_icon_name('web-browser-symbolic',
+                icon = Gtk.Image.new_from_icon_name("web-browser-symbolic",
                                                     Gtk.IconSize.MENU)
                 web.set_image(icon)
-                web.get_style_context().add_class('no-padding')
+                web.get_style_context().add_class("no-padding")
                 web.set_margin_start(5)
                 web.set_tooltip_text(self.__object.uri)
                 web.show_all()
                 uri = "https://www.youtube.com/results?search_query=%s" %\
                     (self.__object.artists[0] + " " + self.__object.name,)
                 search = Gtk.LinkButton(uri)
-                icon = Gtk.Image.new_from_icon_name('edit-find-symbolic',
+                icon = Gtk.Image.new_from_icon_name("edit-find-symbolic",
                                                     Gtk.IconSize.MENU)
                 search.set_image(icon)
-                search.get_style_context().add_class('no-padding')
+                search.get_style_context().add_class("no-padding")
                 search.set_tooltip_text(uri)
                 search.show_all()
 
-        if self.__object.is_web:
-            if self.__object.genre_ids == [Type.CHARTS]:
-                if isinstance(self.__object, Album):
-                    self.add(save)
-            else:
-                self.add(trash)
-        elif can_launch:
-            self.add(edit)
-        self.add(opendir)
-        self.add(playlist)
-        if isinstance(self.__object, Album):
-            self.add(queue)
-        else:
-            if self.__object.album.is_web:
                 self.add(web)
                 self.add(search)
-            self.add(rating)
-            self.add(loved)
+
+            if Type.CHARTS not in self.__object.genre_ids:
+                rating = RatingWidget(object)
+                rating.set_margin_top(5)
+                rating.set_margin_end(10)
+                rating.set_margin_bottom(5)
+                rating.set_property("halign", Gtk.Align.END)
+                rating.set_property("hexpand", True)
+                rating.show()
+
+                loved = LovedWidget(object)
+                loved.set_margin_end(5)
+                loved.set_margin_top(5)
+                loved.set_margin_bottom(5)
+                loved.show()
+
+                self.add(rating)
+                self.add(loved)
 
 #######################
 # PRIVATE             #
@@ -214,7 +199,7 @@ class ContextWidget(Gtk.Grid):
         genre_id = Lp().genres.get_id("Web")
         if genre_id is None:
             genre_id = Lp().genres.add("Web")
-            Lp().scanner.emit('genre-updated', genre_id, True)
+            Lp().scanner.emit("genre-updated", genre_id, True)
         Lp().albums.del_genres(self.__object.id)
         Lp().albums.add_genre(self.__object.id, genre_id)
         for track_id in self.__object.track_ids:
@@ -222,7 +207,7 @@ class ContextWidget(Gtk.Grid):
             Lp().tracks.add_genre(track_id, genre_id)
         with SqlCursor(Lp().db) as sql:
             sql.commit()
-        Lp().scanner.emit('album-updated', self.__object.id, True)
+        Lp().scanner.emit("album-updated", self.__object.id, True)
 
     def __remove_object(self, args):
         """
@@ -238,20 +223,13 @@ class ContextWidget(Gtk.Grid):
         """
         try:
             path = GLib.filename_from_uri(self.__object.uri)[0]
-            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-            proxy = Gio.DBusProxy.new_sync(
-                                    bus, Gio.DBusProxyFlags.NONE, None,
-                                    'org.gnome.Lollypop.Portal',
-                                    '/org/gnome/LollypopPortal',
-                                    'org.gnome.Lollypop.Portal', None)
-            proxy.call('LaunchTagEditor',
-                       GLib.Variant('(s)', (path,)),
-                       Gio.DBusCallFlags.NO_AUTO_START,
-                       500, None)
+            Gio.bus_get(Gio.BusType.SESSION, None,
+                        self.__on_get_bus, "LaunchTagEditor",
+                        GLib.Variant("(s)", (path,)),
+                        None)
         except Exception as e:
-            print("You are missing lollypop-portal: "
-                  "https://github.com/gnumdk/lollypop-portal", e)
-        self.__button.emit('clicked')
+            print("ContextWidget::__edit_tags", e)
+        self.__button.emit("clicked")
 
     def __open_dir(self, arguments):
         """
@@ -300,8 +278,8 @@ class ContextWidget(Gtk.Grid):
                 Lp().player.del_from_queue(track_id, False)
             else:
                 Lp().player.append_to_queue(track_id, False)
-        Lp().player.emit('queue-changed')
-        self.__button.emit('clicked')
+        Lp().player.emit("queue-changed")
+        self.__button.emit("clicked")
 
     def __show_playlist_manager(self, args):
         """
@@ -312,4 +290,49 @@ class ContextWidget(Gtk.Grid):
                                           self.__object.genre_ids,
                                           self.__object.artist_ids,
                                           isinstance(self.__object, Album))
-        self.__button.emit('clicked')
+        self.__button.emit("clicked")
+
+    def __on_get_bus(self, source, result, call, args, callback):
+        """
+            Get proxy
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+            @param call as str
+            @param args as GLib.Variant()/None
+            @param callback as function
+        """
+        bus = Gio.bus_get_finish(result)
+        Gio.DBusProxy.new(bus, Gio.DBusProxyFlags.NONE, None,
+                          "org.gnome.Lollypop.Portal",
+                          "/org/gnome/LollypopPortal",
+                          "org.gnome.Lollypop.Portal", None,
+                          self.__on_get_portal_proxy, call, args, callback)
+
+    def __on_get_portal_proxy(self, source, result, call, args, callback):
+        """
+            Launch call and connect it to callback
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+            @param call as str
+            @param args as GLib.Variant()/None
+            @param callback as function
+        """
+        try:
+            proxy = source.new_finish(result)
+            proxy.call(call, args, Gio.DBusCallFlags.NO_AUTO_START,
+                       500, None, callback)
+        except Exception as e:
+            print("You are missing lollypop-portal: "
+                  "https://github.com/gnumdk/lollypop-portal", e)
+
+    def __on_can_launch_tag_editor(self, source, result):
+        """
+            Add action if launchable
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+        """
+        try:
+            if source.call_finish(result)[0]:
+                self.__edit.show()
+        except Exception as e:
+            print("ContextWidget::__on_can_launch_tag_editor():", e)

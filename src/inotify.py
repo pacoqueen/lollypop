@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -44,7 +44,7 @@ class Inotify:
             monitor = f.monitor_directory(Gio.FileMonitorFlags.NONE,
                                           None)
             if monitor is not None:
-                monitor.connect('changed', self.__on_dir_changed)
+                monitor.connect("changed", self.__on_dir_changed)
                 self.__monitors.append(uri)
         except Exception as e:
             print("Inotify::add_monitor():", e)

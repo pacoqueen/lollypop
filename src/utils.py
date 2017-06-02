@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -16,9 +16,22 @@ from gettext import gettext as _
 from threading import Thread
 import unicodedata
 
-from lollypop.define import Lp, Type
+from lollypop.define import Lp, Type, ENCODING
 from lollypop.objects import Track
 from lollypop.lio import Lio
+
+
+def decode_all(bytes):
+    """
+        Decode bytes trying all encodings
+        @param bytes as bytes
+        @return str
+    """
+    for encoding in ENCODING:
+        try:
+            return bytes.decode(encoding)
+        except Exception as e:
+            print("decode_all():", e)
 
 
 def get_network_available():
@@ -27,7 +40,7 @@ def get_network_available():
         @return bool
     """
     return Gio.NetworkMonitor.get_default().get_network_available() and\
-        Lp().settings.get_value('network-access')
+        Lp().settings.get_value("network-access")
 
 
 def noaccents(string):
@@ -36,11 +49,11 @@ def noaccents(string):
             @param string as str
             @return str
         """
-        nfkd_form = unicodedata.normalize('NFKD', string)
+        nfkd_form = unicodedata.normalize("NFKD", string)
         return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 
-def escape(str, ignore=['_', '-', ' ', '.']):
+def escape(str, ignore=["_", "-", " ", "."]):
     """
         Escape string
         @param string as str
@@ -79,13 +92,25 @@ def is_audio(f):
         Return True if files is audio
         @param f as Gio.File
     """
+    audio = ["application/ogg", "application/x-ogg", "application/x-ogm-audio",
+             "audio/aac", "audio/mp4", "audio/mpeg", "audio/mpegurl",
+             "audio/ogg", "audio/vnd.rn-realaudio", "audio/vorbis",
+             "audio/x-flac", "audio/x-mp3", "audio/x-mpeg", "audio/x-mpegurl",
+             "audio/x-ms-wma", "audio/x-musepack", "audio/x-oggflac",
+             "audio/x-pn-realaudio", "application/x-flac", "audio/x-speex",
+             "audio/x-vorbis", "audio/x-vorbis+ogg", "audio/x-wav",
+             "x-content/audio-player", "audio/x-aac", "audio/m4a",
+             "audio/x-m4a", "audio/mp3", "audio/ac3", "audio/flac",
+             "audio/x-opus+ogg", "application/x-extension-mp4",
+             "audio/x-pn-aiff", "audio/x-pn-au", "audio/x-pn-wav",
+             "audio/x-pn-windows-acm", "application/x-matroska",
+             "audio/x-matroska", "video/mp4"]
     try:
-        info = f.query_info('standard::content-type',
+        info = f.query_info("standard::content-type",
                             Gio.FileQueryInfoFlags.NONE)
         if info is not None:
-            # Issue with GLib mime detection, should detect mp4 audio as audio
-            if info.get_content_type()[0:6] == "audio/" or\
-               info.get_content_type() == "video/mp4":
+            content_type = info.get_content_type()
+            if content_type in audio:
                 return True
     except:
         pass
@@ -98,7 +123,7 @@ def is_pls(f):
         @param f as Gio.File
     """
     try:
-        info = f.query_info('standard::content-type',
+        info = f.query_info("standard::content-type",
                             Gio.FileQueryInfoFlags.NONE)
         if info is not None:
             if info.get_content_type() in ["audio/x-mpegurl",
@@ -114,7 +139,7 @@ def format_artist_name(name):
         Return formated artist name
         @param str
     """
-    if not Lp().settings.get_value('smart-artist-sort'):
+    if not Lp().settings.get_value("smart-artist-sort"):
         return name
     # Handle language ordering
     # Translators: Add here words that shoud be ignored for artist sort order
@@ -146,7 +171,7 @@ def seconds_to_string(duration):
     minutes = seconds // 60
     seconds %= 60
 
-    return '%i:%02i' % (minutes, seconds)
+    return "%i:%02i" % (minutes, seconds)
 
 
 def is_readonly(uri):
@@ -154,10 +179,10 @@ def is_readonly(uri):
         Check if uri is readonly
     """
     f = Lio.File.new_for_uri(uri)
-    info = f.query_info('access::can-write',
+    info = f.query_info("access::can-write",
                         Gio.FileQueryInfoFlags.NONE,
                         None)
-    return not info.get_attribute_boolean('access::can-write')
+    return not info.get_attribute_boolean("access::can-write")
 
 
 def is_loved(track_id):

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -33,7 +33,7 @@ class Codecs:
         try:
             context = GstPbutils.InstallPluginsContext.new()
             try:
-                context.set_desktop_id('lollypop.desktop')
+                context.set_desktop_id("org.gnome.Lollypop.desktop")
             except:
                 pass  # Not supported by Ubuntu VIVID
             details = []

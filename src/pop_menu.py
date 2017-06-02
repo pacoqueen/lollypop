@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,7 @@ from gi.repository import Gio, GLib, Gtk
 
 from gettext import gettext as _
 from threading import Thread
+from time import time
 
 from lollypop.widgets_rating import RatingWidget
 from lollypop.widgets_loved import LovedWidget
@@ -59,9 +60,9 @@ class ArtistMenu(BaseMenu):
         """
         go_artist_action = Gio.SimpleAction(name="go_artist_action")
         Lp().add_action(go_artist_action)
-        go_artist_action.connect('activate',
+        go_artist_action.connect("activate",
                                  self.__go_to_artists)
-        self.append(_("Show albums from artist"), 'app.go_artist_action')
+        self.append(_("Show albums from artist"), "app.go_artist_action")
 
     def __go_to_artists(self, action, variant):
         """
@@ -92,7 +93,7 @@ class QueueMenu(BaseMenu):
         """
             Set queue actions
         """
-        queue = Lp().player.get_queue()
+        queue = Lp().player.queue
         append = True
         prepend = True
         delete = True
@@ -123,20 +124,20 @@ class QueueMenu(BaseMenu):
         del_queue_action = Gio.SimpleAction(name="del_queue_action")
         Lp().add_action(del_queue_action)
         if append:
-            append_queue_action.connect('activate',
+            append_queue_action.connect("activate",
                                         self.__append_to_queue)
-            self.append(_("Add to queue"), 'app.append_queue_action')
+            self.append(_("Add to queue"), "app.append_queue_action")
         if prepend:
-            prepend_queue_action.connect('activate',
+            prepend_queue_action.connect("activate",
                                          self.__insert_in_queue)
             if isinstance(self._object, Album):
-                self.append(_("Next tracks"), 'app.prepend_queue_action')
+                self.append(_("Next tracks"), "app.prepend_queue_action")
             else:
-                self.append(_("Next track"), 'app.prepend_queue_action')
+                self.append(_("Next track"), "app.prepend_queue_action")
         if delete:
-            del_queue_action.connect('activate',
+            del_queue_action.connect("activate",
                                      self.__del_from_queue)
-            self.append(_("Remove from queue"), 'app.del_queue_action')
+            self.append(_("Remove from queue"), "app.del_queue_action")
 
     def __append_to_queue(self, action, variant):
         """
@@ -151,7 +152,7 @@ class QueueMenu(BaseMenu):
                 Lp().player.append_to_queue(track_id, False)
         else:
             Lp().player.append_to_queue(self._object.id, False)
-        Lp().player.emit('queue-changed')
+        Lp().player.emit("queue-changed")
 
     def __insert_in_queue(self, action, variant):
         """
@@ -167,7 +168,7 @@ class QueueMenu(BaseMenu):
                 Lp().player.insert_in_queue(track_id, 0, False)
         else:
             Lp().player.insert_in_queue(self._object.id, 0, False)
-        Lp().player.emit('queue-changed')
+        Lp().player.emit("queue-changed")
 
     def __del_from_queue(self, action, variant):
         """
@@ -182,7 +183,7 @@ class QueueMenu(BaseMenu):
                 Lp().player.del_from_queue(track_id, False)
         else:
             Lp().player.del_from_queue(self._object.id, False)
-        Lp().player.emit('queue-changed')
+        Lp().player.emit("queue-changed")
 
 
 class PlaylistsMenu(BaseMenu):
@@ -207,9 +208,30 @@ class PlaylistsMenu(BaseMenu):
         """
         playlist_action = Gio.SimpleAction(name="playlist_action")
         Lp().add_action(playlist_action)
-        playlist_action.connect('activate',
+        playlist_action.connect("activate",
                                 self.__add_to_playlists)
-        self.append(_("Add to others"), 'app.playlist_action')
+        self.append(_("Add to others"), "app.playlist_action")
+
+        playlist_action = Gio.SimpleAction(name="playlist_not_in_party")
+        Lp().add_action(playlist_action)
+        if isinstance(self._object, Album):
+            exists = Lp().playlists.exists_album(Type.NOPARTY,
+                                                 self._object.id,
+                                                 self._object.genre_ids,
+                                                 self._object.artist_ids)
+        else:
+            exists = Lp().playlists.exists_track(Type.NOPARTY,
+                                                 self._object.id)
+        if exists:
+            self.append(_('Remove from "Not in party"'),
+                        "app.playlist_not_in_party")
+            playlist_action.connect("activate",
+                                    self.__remove_from_playlist, Type.NOPARTY)
+        else:
+            self.append(_('Add to "Not in party"'),
+                        "app.playlist_not_in_party")
+            playlist_action.connect("activate",
+                                    self.__add_to_playlist, Type.NOPARTY)
 
         i = 0
         for playlist in Lp().playlists.get_last():
@@ -224,13 +246,13 @@ class PlaylistsMenu(BaseMenu):
                 exists = Lp().playlists.exists_track(playlist[0],
                                                      self._object.id)
             if exists:
-                action.connect('activate',
+                action.connect("activate",
                                self.__remove_from_playlist,
                                playlist[0])
                 self.append(_("Remove from \"%s\"") % playlist[1],
                             "app.playlist%s" % i)
             else:
-                action.connect('activate',
+                action.connect("activate",
                                self.__add_to_playlist,
                                playlist[0])
                 self.append(_("Add to \"%s\"") % playlist[1],
@@ -340,24 +362,13 @@ class EditMenu(BaseMenu):
             self.__set_remove_action()
         else:
             # Check portal for tag editor
-            can_launch = False
             try:
-                bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-                proxy = Gio.DBusProxy.new_sync(
-                                            bus, Gio.DBusProxyFlags.NONE, None,
-                                            'org.gnome.Lollypop.Portal',
-                                            '/org/gnome/LollypopPortal',
-                                            'org.gnome.Lollypop.Portal', None)
-                can_launch = proxy.call_sync('CanLaunchTagEditor', None,
-                                             Gio.DBusCallFlags.NO_AUTO_START,
-                                             500, None)[0]
+                Gio.bus_get(Gio.BusType.SESSION, None,
+                            self.__on_get_bus, "CanLaunchTagEditor",
+                            None,
+                            self.__on_can_launch_tag_editor)
             except Exception as e:
                 print("EditMenu::__init__():", e)
-            if can_launch:
-                self.__set_edit_actions()
-            # Open directory
-            self.__set_opendir_actions()
-
 
 #######################
 # PRIVATE             #
@@ -368,11 +379,11 @@ class EditMenu(BaseMenu):
         """
         remove_action = Gio.SimpleAction(name="remove_action")
         Lp().add_action(remove_action)
-        remove_action.connect('activate', self.__remove_object)
+        remove_action.connect("activate", self.__remove_object)
         if isinstance(self._object, Album):
-            self.append(_("Remove album"), 'app.remove_action')
+            self.append(_("Remove album"), "app.remove_action")
         else:
-            self.append(_("Remove track"), 'app.remove_action')
+            self.append(_("Remove track"), "app.remove_action")
 
     def __set_edit_actions(self):
         """
@@ -380,8 +391,8 @@ class EditMenu(BaseMenu):
         """
         edit_tag_action = Gio.SimpleAction(name="edit_tag_action")
         Lp().add_action(edit_tag_action)
-        edit_tag_action.connect('activate', self.__edit_tag)
-        self.append(_("Modify information"), 'app.edit_tag_action')
+        edit_tag_action.connect("activate", self.__edit_tag)
+        self.append(_("Modify information"), "app.edit_tag_action")
 
     def __set_opendir_actions(self):
         """
@@ -408,16 +419,10 @@ class EditMenu(BaseMenu):
         """
         try:
             path = GLib.filename_from_uri(self._object.uri)[0]
-            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-            proxy = Gio.DBusProxy.new_sync(
-                                    bus, Gio.DBusProxyFlags.NONE, None,
-                                    'org.gnome.Lollypop.Portal',
-                                    '/org/gnome/LollypopPortal',
-                                    'org.gnome.Lollypop.Portal', None)
-            proxy.call('LaunchTagEditor',
-                       GLib.Variant('(s)', (path,)),
-                       Gio.DBusCallFlags.NO_AUTO_START,
-                       500, None)
+            Gio.bus_get(Gio.BusType.SESSION, None,
+                        self.__on_get_bus, "LaunchTagEditor",
+                        GLib.Variant("(s)", (path,)),
+                        None)
         except Exception as e:
             print("EditMenu::__edit_tag():", e)
 
@@ -457,6 +462,50 @@ class EditMenu(BaseMenu):
                 process = subprocess.run(comando)
         except Exception as e:
             print("EditMenu::__open_dir():", e)
+
+    def __on_get_bus(self, source, result, call, args, callback):
+        """
+            Get proxy
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+            @param call as str
+            @param args as GLib.Variant()/None
+            @param callback as function
+        """
+        bus = Gio.bus_get_finish(result)
+        Gio.DBusProxy.new(bus, Gio.DBusProxyFlags.NONE, None,
+                          "org.gnome.Lollypop.Portal",
+                          "/org/gnome/LollypopPortal",
+                          "org.gnome.Lollypop.Portal", None,
+                          self.__on_get_portal_proxy, call, args, callback)
+
+    def __on_get_portal_proxy(self, source, result, call, args, callback):
+        """
+            Launch call and connect it to callback
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+            @param call as str
+            @param args as GLib.Variant()/None
+            @param callback as function
+        """
+        try:
+            proxy = source.new_finish(result)
+            proxy.call(call, args, Gio.DBusCallFlags.NO_AUTO_START,
+                       500, None, callback)
+        except Exception as e:
+            print("EditMenu::__on_get_portal_proxy():", e)
+
+    def __on_can_launch_tag_editor(self, source, result):
+        """
+            Add action if launchable
+            @param source as GObject.Object
+            @param result as Gio.AsyncResult
+        """
+        try:
+            if source.call_finish(result)[0]:
+                self.__set_edit_actions()
+        except Exception as e:
+            print("EditMenu::__on_can_launch_tag_editor():", e)
 
 
 class AlbumMenu(Gio.Menu):
@@ -521,52 +570,34 @@ class TrackMenuPopover(Gtk.Popover):
         else:
             track_year = ""
 
-        rating = RatingWidget(track)
-        rating.set_margin_top(5)
-        rating.set_margin_bottom(5)
-        rating.set_property('halign', Gtk.Align.START)
-        rating.set_property('hexpand', True)
-        rating.show()
-
-        loved = LovedWidget(track)
-        loved.set_margin_end(5)
-        loved.set_margin_top(5)
-        loved.set_margin_bottom(5)
-        if track_year == "":
-            loved.set_property('halign', Gtk.Align.END)
-        else:
-            loved.set_property('halign', Gtk.Align.CENTER)
-        loved.set_property('hexpand', True)
-        loved.show()
-
         if track_year != "":
             year = Gtk.Label()
             year.set_text(track_year)
             year.set_margin_end(5)
             year.set_margin_top(5)
             year.set_margin_bottom(5)
-            year.get_style_context().add_class('dim-label')
-            year.set_property('halign', Gtk.Align.END)
-            year.set_property('hexpand', True)
+            year.get_style_context().add_class("dim-label")
+            year.set_property("halign", Gtk.Align.END)
+            year.set_property("hexpand", True)
             year.show()
 
         if track.album.is_web:
             uri = Lp().tracks.get_uri(track.id)
             web = Gtk.LinkButton(uri)
-            icon = Gtk.Image.new_from_icon_name('web-browser-symbolic',
+            icon = Gtk.Image.new_from_icon_name("web-browser-symbolic",
                                                 Gtk.IconSize.MENU)
             web.set_image(icon)
-            web.get_style_context().add_class('no-padding')
+            web.get_style_context().add_class("no-padding")
             web.set_margin_end(5)
             web.set_tooltip_text(uri)
             web.show_all()
             uri = "https://www.youtube.com/results?search_query=%s" %\
                 (track.artists[0] + " " + track.name,)
             search = Gtk.LinkButton(uri)
-            icon = Gtk.Image.new_from_icon_name('edit-find-symbolic',
+            icon = Gtk.Image.new_from_icon_name("edit-find-symbolic",
                                                 Gtk.IconSize.MENU)
             search.set_image(icon)
-            search.get_style_context().add_class('no-padding')
+            search.get_style_context().add_class("no-padding")
             search.set_margin_end(5)
             search.set_tooltip_text(uri)
             search.show_all()
@@ -577,7 +608,7 @@ class TrackMenuPopover(Gtk.Popover):
         grid.set_orientation(Gtk.Orientation.VERTICAL)
 
         stack = Gtk.Stack()
-        stack.add_named(grid, 'main')
+        stack.add_named(grid, "main")
         stack.show_all()
 
         menu_widget = self.get_child()
@@ -585,20 +616,41 @@ class TrackMenuPopover(Gtk.Popover):
             self.remove(menu_widget)
             grid.add(menu_widget)
 
-        if not track.album.is_web:
-            separator = Gtk.Separator()
-            separator.show()
-            grid.add(separator)
-
         hgrid = Gtk.Grid()
-        hgrid.add(rating)
-        hgrid.add(loved)
-        if track.album.is_web:
-            hgrid.add(web)
-            hgrid.add(search)
-        if track_year != "":
-            hgrid.add(year)
-        hgrid.show()
+        if Type.CHARTS not in track.genre_ids:
+            if not track.album.is_web:
+                separator = Gtk.Separator()
+                separator.show()
+                grid.add(separator)
+
+            rating = RatingWidget(track)
+            rating.set_margin_top(5)
+            rating.set_margin_bottom(5)
+            rating.set_property("halign", Gtk.Align.START)
+            rating.set_property("hexpand", True)
+            rating.show()
+
+            loved = LovedWidget(track)
+            loved.set_margin_end(5)
+            loved.set_margin_top(5)
+            loved.set_margin_bottom(5)
+            if track_year == "":
+                loved.set_property("halign", Gtk.Align.END)
+            else:
+                loved.set_property("halign", Gtk.Align.CENTER)
+            loved.set_property("hexpand", True)
+            loved.show()
+
+            hgrid.add(rating)
+            hgrid.add(loved)
+
+            if track.album.is_web:
+                hgrid.add(web)
+                hgrid.add(search)
+            if track_year != "":
+                hgrid.add(year)
+            hgrid.show()
+
         if track.album.is_web:
             grid.set_row_spacing(2)
             uri = Lp().tracks.get_uri(track.id)
@@ -607,9 +659,9 @@ class TrackMenuPopover(Gtk.Popover):
             edit.set_margin_end(5)
             edit.set_margin_bottom(5)
             edit.set_tooltip_text(_("Video address"))
-            edit.set_property('hexpand', True)
+            edit.set_property("hexpand", True)
             edit.set_text(uri)
-            edit.connect('changed', self.__on_edit_changed, track.id)
+            edit.connect("changed", self.__on_edit_changed, track.id)
             edit.show()
             grid.add(edit)
         grid.add(hgrid)
@@ -646,23 +698,23 @@ class AlbumMenuPopover(Gtk.Popover):
         edit.set_margin_start(5)
         edit.set_margin_end(5)
         edit.set_margin_bottom(5)
-        edit.set_property('hexpand', True)
-        edit.set_property('halign', Gtk.Align.CENTER)
-        genres = ", ".join(Lp().albums.get_genres(album.id))
+        edit.set_property("hexpand", True)
+        edit.set_property("halign", Gtk.Align.CENTER)
+        genres = ";".join(Lp().albums.get_genres(album.id))
         if not genres:
             genres = "Web"
         edit.set_text(genres)
         edit.show()
 
-        save = Gtk.Button.new_from_icon_name('document-save-symbolic',
+        save = Gtk.Button.new_from_icon_name("document-save-symbolic",
                                              Gtk.IconSize.MENU)
         save.set_margin_end(5)
         save.set_margin_bottom(5)
-        save.set_property('hexpand', True)
-        save.set_property('halign', Gtk.Align.CENTER)
-        save.set_property('valign', Gtk.Align.CENTER)
+        save.set_property("hexpand", True)
+        save.set_property("halign", Gtk.Align.CENTER)
+        save.set_property("valign", Gtk.Align.CENTER)
         save.set_tooltip_text(_("Save genre"))
-        save.connect('clicked', self.__on_clicked, edit, album)
+        save.connect("clicked", self.__on_clicked, edit, album)
         save.show()
 
         # Hack to add two widgets in popover
@@ -671,7 +723,7 @@ class AlbumMenuPopover(Gtk.Popover):
         grid.set_orientation(Gtk.Orientation.VERTICAL)
 
         stack = Gtk.Stack()
-        stack.add_named(grid, 'main')
+        stack.add_named(grid, "main")
         stack.show_all()
 
         menu_widget = self.get_child()
@@ -703,24 +755,26 @@ class AlbumMenuPopover(Gtk.Popover):
             @param edit as Gtk.Edit
             @param album as Album
         """
-        genre = edit.get_text()
-        if not genre:
+        genres = edit.get_text()
+        if not genres:
             return
         orig_genre_ids = Lp().albums.get_genre_ids(album.id)
-        genre_id = Lp().genres.get_id(genre)
-        if genre_id is None:
-            genre_id = Lp().genres.add(genre)
-            Lp().scanner.emit('genre-updated', genre_id, True)
         Lp().albums.del_genres(album.id)
-        Lp().albums.add_genre(album.id, genre_id)
         for track_id in album.track_ids:
-            Lp().tracks.del_genres(track_id)
-            Lp().tracks.add_genre(track_id, genre_id)
+                Lp().tracks.del_genres(track_id)
+        for genre in genres.split(";"):
+            genre_id = Lp().genres.get_id(genre)
+            if genre_id is None:
+                genre_id = Lp().genres.add(genre)
+                Lp().scanner.emit("genre-updated", genre_id, True)
+            Lp().albums.add_genre(album.id, genre_id, int(time()))
+            for track_id in album.track_ids:
+                Lp().tracks.add_genre(track_id, genre_id, int(time()))
         for genre_id in orig_genre_ids:
-            if genre_id != Type.CHARTS:
+            if genre_id >= 0:
                 Lp().genres.clean(genre_id)
-                GLib.idle_add(Lp().scanner.emit, 'genre-updated',
+                GLib.idle_add(Lp().scanner.emit, "genre-updated",
                               genre_id, False)
         with SqlCursor(Lp().db) as sql:
             sql.commit()
-        Lp().scanner.emit('album-updated', album.id, True)
+        Lp().scanner.emit("album-updated", album.id, True)

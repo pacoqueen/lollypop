@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -31,9 +31,9 @@ class DeviceLocked(View):
         """
         View.__init__(self)
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/DeviceManagerView.ui')
-        self.add(builder.get_object('message'))
-        builder.get_object('label').set_text(_("Please unlock your device"))
+        builder.add_from_resource("/org/gnome/Lollypop/DeviceManagerView.ui")
+        self.add(builder.get_object("message"))
+        builder.get_object("label").set_text(_("Please unlock your device"))
 
 
 class DeviceView(View):
@@ -61,7 +61,7 @@ class DeviceView(View):
             if not d.query_exists():
                 d.make_directory_with_parents()
             infos = d.enumerate_children(
-                'standard::name,standard::type',
+                "standard::name,standard::type",
                 Gio.FileQueryInfoFlags.NONE,
                 None)
             for info in infos:
@@ -90,15 +90,16 @@ class DeviceView(View):
         self.__timeout_id = None
         self.__device = device
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/Lollypop/DeviceManagerView.ui')
-        self.__memory_combo = builder.get_object('memory_combo')
-        self.__syncing_btn = builder.get_object('sync_btn')
+        builder.add_from_resource("/org/gnome/Lollypop/DeviceManagerView.ui")
+        self.__memory_combo = builder.get_object("memory_combo")
+        self.__syncing_btn = builder.get_object("sync_btn")
         self.__syncing_btn.set_label(_("Synchronize %s") % device.name)
         builder.connect_signals(self)
-        grid = builder.get_object('device')
+        grid = builder.get_object("device")
+        self.__warning = builder.get_object("warning")
         self.add(grid)
         self.__device_widget = DeviceManagerWidget(self)
-        self.__device_widget.connect('sync-finished', self.__on_sync_finished)
+        self.__device_widget.connect("sync-finished", self.__on_sync_finished)
         self.__device_widget.show()
         self._viewport.add(self.__device_widget)
         self.add(self._scrolled)
@@ -155,6 +156,11 @@ class DeviceView(View):
         self.__timeout_id = None
         text = combo.get_active_text()
         uri = "%s%s/Music" % (self.__device.uri, text)
+        already_synced = Gio.File.new_for_uri(uri + "/unsync")
+        if already_synced.query_exists():
+            self.__warning.hide()
+        else:
+            self.__warning.show()
         self.__device_widget.set_uri(uri)
         self.__device_widget.populate()
 
@@ -169,13 +175,13 @@ class DeviceView(View):
         uri = self.__device.uri
         # Mtp device contain a virtual folder
         # For others, just go up in path
-        if uri.find('mtp:') == -1:
-            m = re.search('(.*)/[^/]*', uri)
+        if uri.find("mtp:") == -1:
+            m = re.search("(.*)/[^/]*", uri)
             if m:
                 uri = m.group(1)
         # Add / to uri if needed, some gvfs modules add one and some not
-        if uri is not None and len(uri) > 1 and uri[-1:] != '/':
-            uri += '/'
+        if uri is not None and len(uri) > 1 and uri[-1:] != "/":
+            uri += "/"
         self.__device.uri = uri
 
     def stop(self):
@@ -198,7 +204,10 @@ class DeviceView(View):
             Set combobox text
             @param text list as [str]
         """
+        # Just update device widget if already populated
         if self.__memory_combo.get_active_text() is not None:
+            if not self.__device_widget.is_syncing():
+                self.__device_widget.populate()
             return
         for text in text_list:
             self.__memory_combo.append_text(text)

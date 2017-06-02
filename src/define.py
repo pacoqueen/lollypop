@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -37,7 +37,7 @@ Lp = Gio.Application.get_default
 
 GOOGLE_API_ID = "015987506728554693370:waw3yqru59a"
 
-TAG_EDITORS = ['kid3-qt', 'exfalso', 'easytag', 'picard', 'puddletag']
+TAG_EDITORS = ["kid3-qt", "exfalso", "easytag", "picard", "puddletag"]
 
 
 # Represent what to do on next track
@@ -113,11 +113,6 @@ class OrderBy:
     POPULARITY = 3
 
 
-class ChartsProvider:
-    ITUNES = 0
-    SPOTIFY = 1
-
-
 # Order is important
 class Type:
     NONE = -1
@@ -129,9 +124,20 @@ class Type:
     EXTERNALS = -7
     SEARCH = -8
     CHARTS = -9
-    ALL = -10
+    SPOTIFY = -10
+    ITUNES = -11
+    LASTFM = -12
+    NOPARTY = -13
+    ALBUMS = -14
+    ALL = -15
     LOVED = -997
     NEVER = -998
     DEVICES = -1000
     SEPARATOR = -2000
     COMPILATIONS = -2001
+
+
+ENCODING = ["utf_8",
+            "iso8859_1",
+            "utf_16",
+            "utf_16_be"]

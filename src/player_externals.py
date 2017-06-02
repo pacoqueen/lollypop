@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -35,7 +35,7 @@ class ExternalsPlayer(BasePlayer):
         """
         pass
 
-    def load_external(self, uri, name=''):
+    def load_external(self, uri, name=""):
         """
             Load external tracks
             @param uri as str
@@ -44,7 +44,7 @@ class ExternalsPlayer(BasePlayer):
         track = Track()
         track.set_album_artists([name])
         track.set_uri(uri)
-        if track.uri.startswith('file://'):
+        if track.uri.startswith("file://"):
             track.id = Type.EXTERNALS
             track.name = GLib.path_get_basename(GLib.filename_from_uri(uri)[0])
         else:

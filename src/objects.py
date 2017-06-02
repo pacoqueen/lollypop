@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
+# Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # Copyright (c) 2015 Jean-Philippe Braun <eon@patapon.info>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ class Base:
 
     def __dir__(self, *args, **kwargs):
         """
-            Concatenate base class's fields with child class's fields
+            Concatenate base class"s fields with child class"s fields
         """
         return super(Base, self).__dir__(*args, **kwargs) + self.FIELDS
 
@@ -37,7 +37,7 @@ class Base:
         if attr in self.FIELDS:
             if self.id is None or self.id < 0:
                 return self.DEFAULTS[self.FIELDS.index(attr)]
-            # Actual value of 'attr_name' is stored in '_attr_name'
+            # Actual value of "attr_name" is stored in "_attr_name"
             attr_name = "_" + attr
             attr_value = getattr(self, attr_name)
             if attr_value is None:
@@ -48,13 +48,6 @@ class Base:
                 return self.DEFAULTS[self.FIELDS.index(attr)]
             else:
                 return attr_value
-
-    def get_rate(self):
-        """
-            Get rate
-            @return int between -1 and 5
-        """
-        return self.db.get_rate(self.id)
 
     def get_popularity(self):
         """
@@ -76,13 +69,6 @@ class Base:
                 popularity = radios.get_popularity(self._album_artists[0])
         return popularity * 5 / avg_popularity + 0.5
 
-    def set_rate(self, rate):
-        """
-            Set rate
-            @param rate as int between -1 and 5
-        """
-        self.db.set_rate(self.id, rate)
-
     def set_popularity(self, popularity):
         """
             Set popularity
@@ -102,6 +88,33 @@ class Base:
                 radios.set_popularity(self._album_artists[0], popularity)
         except Exception as e:
             print("Base::set_popularity(): %s" % e)
+
+    def get_rate(self):
+        """
+            Get rate
+            @return int
+        """
+        if self.id is None or self.id == Type.EXTERNALS:
+            return 0
+
+        rate = 0
+        if self.id >= 0:
+            rate = self.db.get_rate(self.id)
+        elif self.id == Type.RADIOS:
+            radios = Radios()
+            rate = radios.get_rate(self._album_artists[0])
+        return rate
+
+    def set_rate(self, rate):
+        """
+            Set rate
+            @param rate as int between -1 and 5
+        """
+        if self.id == Type.RADIOS:
+            radios = Radios()
+            radios.set_rate(self._album_artists[0], rate)
+        else:
+            self.db.set_rate(self.id, rate)
 
 
 class Disc:
@@ -157,9 +170,9 @@ class Album(Base):
     """
         Represent an album
     """
-    FIELDS = ['name', 'artists', 'artist_ids',
-              'year', 'uri', 'duration', 'mtime', 'synced', 'loved']
-    DEFAULTS = ['', '', [], '', '', 0, 0, False, False]
+    FIELDS = ["name", "artists", "artist_ids",
+              "year", "uri", "duration", "mtime", "synced", "loved"]
+    DEFAULTS = ["", "", [], "", "", 0, 0, False, False]
 
     def __init__(self, album_id=None, genre_ids=[], artist_ids=[]):
         """
@@ -284,25 +297,25 @@ class Album(Base):
         for artist_id in list(set(artist_ids)):
             Lp().artists.clean(artist_id)
             # Do not check clean return
-            GLib.idle_add(Lp().scanner.emit, 'artist-updated',
+            GLib.idle_add(Lp().scanner.emit, "artist-updated",
                           artist_id, False)
         for genre_id in genre_ids:
             Lp().genres.clean(genre_id)
-            GLib.idle_add(Lp().scanner.emit, 'genre-updated',
+            GLib.idle_add(Lp().scanner.emit, "genre-updated",
                           genre_id, False)
         with SqlCursor(Lp().db) as sql:
             sql.commit()
-        GLib.idle_add(Lp().scanner.emit, 'album-updated', self.id, deleted)
+        GLib.idle_add(Lp().scanner.emit, "album-updated", self.id, deleted)
 
 
 class Track(Base):
     """
         Represent a track
     """
-    FIELDS = ['name', 'album_id', 'album_artist_ids',
-              'artist_ids', 'genre_ids', 'album_name', 'artists', 'genres',
-              'duration', 'number', 'year', 'persistent', 'mtime']
-    DEFAULTS = ['', None, [], [], [], '', '', '', 0.0, 0, None, 1, 0]
+    FIELDS = ["name", "album_id", "album_artist_ids",
+              "artist_ids", "genre_ids", "album_name", "artists", "genres",
+              "duration", "number", "year", "persistent", "mtime"]
+    DEFAULTS = ["", None, [], [], [], "", "", "", 0.0, 0, None, 1, 0]
 
     def __init__(self, track_id=None):
         """
@@ -387,7 +400,7 @@ class Track(Base):
     @property
     def album(self):
         """
-            Get track's album
+            Get track"s album
             @return Album
         """
         return Album(self.album_id)
@@ -450,12 +463,12 @@ class Track(Base):
         for artist_id in list(set(artist_ids)):
             Lp().artists.clean(artist_id)
             # Do not check clean return
-            GLib.idle_add(Lp().scanner.emit, 'artist-updated',
+            GLib.idle_add(Lp().scanner.emit, "artist-updated",
                           artist_id, False)
         for genre_id in genre_ids:
             Lp().genres.clean(genre_id)
-            GLib.idle_add(Lp().scanner.emit, 'genre-updated',
+            GLib.idle_add(Lp().scanner.emit, "genre-updated",
                           genre_id, False)
         with SqlCursor(Lp().db) as sql:
             sql.commit()
-        GLib.idle_add(Lp().scanner.emit, 'album-updated', album.id, deleted)
+        GLib.idle_add(Lp().scanner.emit, "album-updated", album.id, deleted)
