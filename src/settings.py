@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Settings.
+"""
+
 # Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -10,17 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gtk, Gdk, GLib, Gio, Pango
-try:
-    from gi.repository import Secret
-except:
-    Secret = None
-
-
 from gettext import gettext as _
 from gettext import ngettext as ngettext
 from threading import Thread
-
+from gi.repository import Gtk, Gdk, GLib, Gio, Pango
+try:
+    from gi.repository import Secret
+except ImportError as secret_exception:
+    print("Secret service exception: {}".format(secret_exception))
+    Secret = None
+#pylint: disable=import-error
 from lollypop.define import Lp, SecretSchema, SecretAttributes, Type
 from lollypop.cache import InfoCache
 from lollypop.database import Database
@@ -41,11 +47,12 @@ class Settings(Gio.Settings):
         """
         Gio.Settings.__init__(self)
 
-    def new():
+    @staticmethod
+    def new_gsettings(schema_id="org.gnome.Lollypop"):
         """
             Return a new Settings object
         """
-        settings = Gio.Settings.new("org.gnome.Lollypop")
+        settings = Gio.Settings.new(schema_id)
         settings.__class__ = Settings
         return settings
 

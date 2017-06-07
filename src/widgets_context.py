@@ -116,13 +116,6 @@ class ContextWidget(Gtk.Grid):
                             self.__on_can_launch_tag_editor)
             except Exception as e:
                 print("ContextWidget::__init__():", e)
-            # Open directory
-            opendir = HoverWidget('document-open',
-                                  self.__open_dir)
-            opendir.set_tooltip_text(_("Open directory"))
-            opendir.set_margin_end(10)
-            opendir.show()
-
             self.__edit = HoverWidget("document-properties-symbolic",
                                       self.__edit_tags)
             self.__edit.set_tooltip_text(_("Modify information"))
@@ -145,6 +138,7 @@ class ContextWidget(Gtk.Grid):
                 queue = HoverWidget("list-add-symbolic", self.__add_to_queue)
                 queue.set_tooltip_text(_("Add to queue"))
             queue.set_margin_start(10)
+            queue.set_margin_end(10)
             queue.show()
             self.add(queue)
         else:
@@ -169,7 +163,6 @@ class ContextWidget(Gtk.Grid):
 
                 self.add(web)
                 self.add(search)
-
             if Type.CHARTS not in self.__object.genre_ids:
                 rating = RatingWidget(object)
                 rating.set_margin_top(5)
@@ -187,6 +180,12 @@ class ContextWidget(Gtk.Grid):
 
                 self.add(rating)
                 self.add(loved)
+        # Open directory
+        self.__opendir = HoverWidget('document-open', self.__open_dir)
+        self.__opendir.set_tooltip_text(_("Open directory"))
+        #self.__opendir.set_margin_start(10)
+        self.__opendir.show()
+        self.add(self.__opendir)
 
 #######################
 # PRIVATE             #

@@ -130,7 +130,7 @@ class Application(Gtk.Application):
         """
             Init main application
         """
-        self.settings = Settings.new()
+        self.settings = Settings.new_gsettings()
         # Mount enclosing volume as soon as possible
         uris = self.settings.get_music_uris()
         try:

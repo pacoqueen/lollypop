@@ -369,6 +369,9 @@ class EditMenu(BaseMenu):
                             self.__on_can_launch_tag_editor)
             except Exception as e:
                 print("EditMenu::__init__():", e)
+            # Open directory
+            self.__set_opendir_actions()
+
 
 #######################
 # PRIVATE             #

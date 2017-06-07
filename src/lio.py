@@ -12,9 +12,7 @@
 
 import gi
 gi.require_version("Soup", "2.4")
-
 from gi.repository import Gio, GObject, Soup
-
 from lollypop.define import Lp
 
 
