@@ -1,3 +1,7 @@
+"""
+Container for main window. Artist/genre list, player, etc.
+"""
+
 # Copyright (c) 2014-2017 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

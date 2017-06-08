@@ -53,7 +53,7 @@ class Window(Gtk.ApplicationWindow, Container):
         self.__main_stack = Gtk.Stack()
         self.__main_stack.set_transition_duration(1000)
         self.__main_stack.set_transition_type(
-                                             Gtk.StackTransitionType.CROSSFADE)
+                Gtk.StackTransitionType.CROSSFADE)
         self.__main_stack.show()
 
         self.__setup_content()
