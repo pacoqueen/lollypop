@@ -18,6 +18,7 @@ from lollypop.view import LazyLoadingView
 from lollypop.define import Lp, ArtSize
 from lollypop.objects import Album
 from lollypop.view_albums import AlbumBackView
+from lollypop.widgets_aux import HoldButton
 
 
 class AlbumRow(Gtk.ListBoxRow):
@@ -294,11 +295,12 @@ class AlbumsView(LazyLoadingView):
         self.__clear_button.set_tooltip_text(_("Clear albums"))
         self.__clear_button.set_sensitive(False)
         self.__clear_button.connect("clicked", self.__on_clear_clicked)
-        self.__jump_button = Gtk.Button.new_from_icon_name(
-                                                    "go-jump-symbolic",
-                                                    Gtk.IconSize.MENU)
+        #self.__jump_button = Gtk.Button.new_from_icon_name(
+        self.__jump_button = HoldButton.new_from_icon_name("go-jump-symbolic",
+                                                           Gtk.IconSize.MENU)
         self.__jump_button.set_relief(Gtk.ReliefStyle.NONE)
         self.__jump_button.connect("clicked", self.__on_jump_clicked)
+        self.__jump_button.connect("held", self.__on_jump_held)
         self.__jump_button.set_tooltip_text(_("Go to current track"))
         label = Gtk.Label.new("<b>"+_("Playing albums")+"</b>")
         label.set_use_markup(True)
@@ -439,9 +441,18 @@ class AlbumsView(LazyLoadingView):
         """
             Scroll to album
         """
+        print(" >>>>> pop_albums.py ::: Jumping like a crazy bitch!")
         y = self.__get_current_ordinate()
+        print(" >>>>> y: {} ({})".format(y, type(y)))
         if y is not None:
             self._scrolled.get_vadjustment().set_value(y)
+
+    def __on_jump_held(self, widget):
+        """
+            Go to artist and track in main window.
+        """
+        # TODO: Can't figure still how to do it.
+        print(" >>>>> pop_albums.py ::: __on_jump_held: Jumping like a fucking antilope!")
 
     def __on_clear_clicked(self, widget):
         """
