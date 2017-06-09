@@ -204,6 +204,12 @@ class ToolbarEnd(Gtk.Bin):
         self.__on_search_short([])
         self.__search.set_text(search)
 
+    def get_list_popover(self):
+        """
+        Direct access to list popover.
+        """
+        return self.__list_popover
+
 #######################
 # PROTECTED           #
 #######################

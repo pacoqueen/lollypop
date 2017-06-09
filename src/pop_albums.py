@@ -441,18 +441,24 @@ class AlbumsView(LazyLoadingView):
         """
             Scroll to album
         """
-        print(" >>>>> pop_albums.py ::: Jumping like a crazy bitch!")
         y = self.__get_current_ordinate()
-        print(" >>>>> y: {} ({})".format(y, type(y)))
         if y is not None:
             self._scrolled.get_vadjustment().set_value(y)
 
     def __on_jump_held(self, widget):
         """
-            Go to artist and track in main window.
+            Go to artist in main window.
         """
-        # TODO: Can't figure still how to do it.
-        print(" >>>>> pop_albums.py ::: __on_jump_held: Jumping like a fucking antilope!")
+        # Antes de nada, ¿qué está sonando?
+        track = Lp().player.current_track
+        album_id = track.album.id
+        artist_ids = track.album.artist_ids
+        window = Lp().window
+        window.show_artists_albums(artist_ids)
+        toolbar = Lp().window.toolbar
+        toolbar_end = toolbar.get_toolbar_end()
+        albumpopover = toolbar_end.get_list_popover()
+        albumpopover.popdown()
 
     def __on_clear_clicked(self, widget):
         """

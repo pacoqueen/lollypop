@@ -147,6 +147,12 @@ class Toolbar(Gtk.HeaderBar):
         """
         return self.__toolbar_info.artsize
 
+    def get_toolbar_end(self):
+        """
+        Direct access to the toolbar_end.
+        """
+        return self.__toolbar_end
+
 #######################
 # PRIVATE             #
 #######################

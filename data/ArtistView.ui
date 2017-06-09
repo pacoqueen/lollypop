@@ -140,7 +140,7 @@
             <property name="sensitive">False</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
-            <property name="tooltip_text" translatable="yes">Go to current track</property>
+            <property name="tooltip_text" translatable="yes">Go to current track. Long press to go to current artist.</property>
             <property name="margin_end">2</property>
             <property name="image">image2</property>
             <signal name="clicked" handler="_on_jump_button_clicked" swapped="no"/>
