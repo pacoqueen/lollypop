@@ -1,13 +1,3 @@
-TRANSLATORS:
-https://www.transifex.com/gnumdk/lollypop
-KNOWN BUGS:
-- Slow scrolling: https://bugzilla.gnome.org/show_bug.cgi?id=767713
-- Popover placement: https://bugzilla.gnome.org/show_bug.cgi?id=774148
-WONTFIX:
-- Showing bitrate
-
-BUG MAY BE REJECTED IF MISSING:
-
 ### Environement
 - Lollypop version:
 - GNOME/GTK+ versions:
@@ -15,4 +5,4 @@ BUG MAY BE REJECTED IF MISSING:
 
 
 ### Bug/Feature
-<Describe your bug/feature here>
+<Describe your bug/feature here. Include screenshot if relevant>
