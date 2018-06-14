@@ -1,5 +1,5 @@
 project('lollypop',
-  version: '0.9.514',
+  version: '0.9.514_redux',
   meson_version: '>= 0.40.0'
 )
 i18n = import('i18n')
@@ -33,7 +33,8 @@ conf.set('VERSION', meson.project_version())
 conf.set('PYTHON', python_bin.path())
 
 subdir('data')
-subproject('po')
+subproject('lollypop-po')
+subproject('lollypop-portal')
 subdir('search-provider')
 
 install_subdir(
