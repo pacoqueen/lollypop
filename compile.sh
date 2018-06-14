@@ -4,5 +4,6 @@
 
 #cd lollypop-portal && ./compile.sh; cd ..
 
+./generate_data.sh
 meson builddir --prefix=/home/`whoami`/.local
 ninja -C builddir install

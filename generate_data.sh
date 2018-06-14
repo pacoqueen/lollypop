@@ -1,4 +1,6 @@
-    #!/bin/bash
+#!/bin/bash
+
+# To be run in project root folder.
 
 function generate_resource()
 {
@@ -23,21 +25,33 @@ function generate_resource()
 
 function generate_po()
 {
-    cd po
-    git pull https://hosted.weblate.org/git/gnumdk/lollypop
-    >lollypop.pot
-    for file in ../data/org.gnome.Lollypop.gschema.xml ../data/*.in ../data/*.ui ../lollypop/*.py
-    do
+    cd subprojects/lollypop-po
+
+    ## LINGUAS: File with list of languages.
+    for po in *.po; do
+      echo $po | cut -d '.' -f -1
+    done > LINGUAS
+
+    ## POTFILES: File that lists all the relative path to source files that
+    ##           gettext should scan.
+    ls ../../data/org.gnome.Lollypop.gschema.xml ../../data/*.in > POTFILES
+    ls ../../data/*.ui ../../lollypop/*.py >> POTFILES
+    #ls ../../subprojects/lollypop-portal/*.py >> POTFILES
+    ls ../../subprojects/lollypop-portal/*.in >> POTFILES
+
+    ## Generate .pot file
+    touch lollypop.pot  # If have just cloned, need this empty file to begin
+    for file in $(cat POTFILES); do
         xgettext --from-code=UTF-8 -j $file -o lollypop.pot
     done
-    >LINGUAS
-    for po in *.po
-    do
-        msgmerge -N $po lollypop.pot > /tmp/$$language_new.po
-        mv /tmp/$$language_new.po $po
-        language=${po%.po}
-        echo $language >>LINGUAS
-    done
+
+    ## Update .po files
+    #for po in *.po; do
+    #    msgmerge -N $po lollypop.pot > /tmp/$$language_new.po
+    #    mv /tmp/$$language_new.po $po
+    #    language=${po%.po}
+    #    echo $language >>LINGUAS
+    #done
 }
 
 generate_resource > data/lollypop.gresource.xml
