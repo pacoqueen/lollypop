@@ -11,7 +11,6 @@
 /.deps
 /.dirstamp
 /.libs
-/AUTHORS
 /GPATH
 /GRTAGS
 /GSYMS
@@ -82,4 +81,4 @@ flatpak/metadata
 /flatpak/.flatpak-builder
 /builddir
 .vscode/
-build/
+/build
