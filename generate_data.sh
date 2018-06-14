@@ -45,13 +45,16 @@ function generate_po()
         xgettext --from-code=UTF-8 -j $file -o lollypop.pot
     done
 
-    ## Update .po files
-    #for po in *.po; do
-    #    msgmerge -N $po lollypop.pot > /tmp/$$language_new.po
-    #    mv /tmp/$$language_new.po $po
-    #    language=${po%.po}
-    #    echo $language >>LINGUAS
-    #done
+    ## Update .po files. No need to add to LINGUAS. Already done.
+    for po in *.po; do
+        language=${po%.po}
+        echo -n $language
+        msgmerge -N $po lollypop.pot > /tmp/$$language_new.po
+        mv /tmp/$$language_new.po $po
+        # echo $language >>LINGUAS
+    done
+
+    cd -
 }
 
 generate_resource > data/lollypop.gresource.xml
