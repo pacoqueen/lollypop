@@ -1,6 +1,3 @@
 [submodule "subprojects/lollypop-po"]
 	path = subprojects/lollypop-po
 	url = git@github.com:pacoqueen/lollypop-po.git
-[submodule "subprojects/lollypop-portal"]
-	path = subprojects/lollypop-portal
-	url = git@github.com:pacoqueen/lollypop-portal.git
