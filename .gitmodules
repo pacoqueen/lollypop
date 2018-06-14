@@ -1,0 +1,3 @@
+[submodule "subprojects/lollypop-po"]
+	path = subprojects/lollypop-po
+	url = git@github.com:pacoqueen/lollypop-po.git
