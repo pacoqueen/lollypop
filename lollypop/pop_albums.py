@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2014-2018 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -10,13 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gtk, GLib
+"""
+Popup widget for albums.
+"""
 
 from gettext import gettext as _
 
+from gi.repository import GLib, Gtk
+from lollypop.define import App, ResponsiveType
 from lollypop.helper_task import TaskHelper
 from lollypop.view_albums_list import AlbumsListView
-from lollypop.define import App, ResponsiveType
+from lollypop.widgets_aux import HoldButton
 
 
 class AlbumsPopover(Gtk.Popover):
@@ -28,6 +35,7 @@ class AlbumsPopover(Gtk.Popover):
         """
             Init popover
         """
+        self._stop = None
         Gtk.Popover.__init__(self)
         self.__clear_button = Gtk.Button.new_from_icon_name(
             "edit-clear-all-symbolic",
@@ -43,11 +51,13 @@ class AlbumsPopover(Gtk.Popover):
         self.__save_button.set_tooltip_text(_("Create a new playlist"))
         self.__save_button.set_sensitive(App().player.albums)
         self.__save_button.connect("clicked", self.__on_save_clicked)
-        self.__jump_button = Gtk.Button.new_from_icon_name(
+        # self.__jump_button = Gtk.Button.new_from_icon_name(
+        self.__jump_button = HoldButton.new_from_icon_name(
             "go-jump-symbolic",
             Gtk.IconSize.MENU)
         self.__jump_button.set_relief(Gtk.ReliefStyle.NONE)
         self.__jump_button.connect("clicked", self.__on_jump_clicked)
+        self.__jump_button.connect("held", self.__on_jump_held)
         self.__jump_button.set_tooltip_text(_("Go to current track"))
         label = Gtk.Label.new("<b>" + _("Playing albums") + "</b>")
         label.set_use_markup(True)
@@ -91,12 +101,27 @@ class AlbumsPopover(Gtk.Popover):
             playlist_id = App().playlists.get_id(date_string)
             App().playlists.add_tracks(playlist_id, tracks)
 
+    # pylint: disable=unused-argument
     def __on_jump_clicked(self, button):
         """
             Scroll to album
             @param button as Gtk.Button
         """
         self.__view.jump_to_current()
+
+    # pylint: disable=no-self-use
+    def __on_jump_held(self, widget):
+        """Go to artist in main window."""
+        # Antes de nada, ¿qué está sonando?
+        track = App().player.current_track
+        # album_id = track.album.id
+        artist_ids = track.album.artist_ids
+        window = App().window.container
+        window.show_artists_albums(artist_ids)
+        toolbar = App().window.toolbar
+        toolbar_end = toolbar.get_toolbar_end()
+        albumpopover = toolbar_end.get_list_popover()
+        albumpopover.popdown()
 
     def __on_save_clicked(self, button):
         """
@@ -107,6 +132,7 @@ class AlbumsPopover(Gtk.Popover):
         helper = TaskHelper()
         helper.run(self.__albums_to_playlist)
 
+    # pylint: disable=unused-argument
     def __on_clear_clicked(self, button):
         """
             Clear albums

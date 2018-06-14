@@ -230,6 +230,12 @@ class ToolbarEnd(Gtk.Bin):
         popover.show()
         return popover
 
+    def get_list_popover(self):
+        """
+        Direct access to list popover.
+        """
+        return self.__list_popover
+
 #######################
 # PROTECTED           #
 #######################
