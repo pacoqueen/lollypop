@@ -10,19 +10,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, GObject, Gio
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
 
 from gettext import gettext as _
 from threading import Thread
 from time import time
 
-from lollypop.inotify import Inotify
+from gi.repository import Gio, GLib, GObject
+from lollypop.database_history import History
 from lollypop.define import App, Type
-from lollypop.objects import Track, Album
+from lollypop.inotify import Inotify
+from lollypop.logger import Logger
+from lollypop.objects import Album, Track
 from lollypop.sqlcursor import SqlCursor
 from lollypop.tagreader import TagReader
-from lollypop.logger import Logger
-from lollypop.database_history import History
 from lollypop.utils import is_audio, is_pls
 
 
@@ -267,6 +268,7 @@ class CollectionScanner(GObject.GObject, TagReader):
         del self.__history
         self.__history = None
 
+    # pylint: disable=too-many-statements,too-many-locals
     def __add2db(self, uri, mtime):
         """
             Add new file to db with information
@@ -275,11 +277,11 @@ class CollectionScanner(GObject.GObject, TagReader):
             @return track id as int
             @warning, be sure SqlCursor is available for App().db
         """
-        f = Gio.File.new_for_uri(uri)
+        fgio = Gio.File.new_for_uri(uri)
         Logger.debug("CollectionScanner::add2db(): Read tags")
         info = self.get_info(uri)
         tags = info.get_tags()
-        name = f.get_basename()
+        name = fgio.get_basename()
         title = self.get_title(tags, name)
         artists = self.get_artists(tags)
         composers = self.get_composers(tags)
@@ -300,16 +302,16 @@ class CollectionScanner(GObject.GObject, TagReader):
         duration = int(info.get_duration() / 1000000000)
 
         # If no artists tag, use album artist
-        if artists == "":
+        if not artists:
             artists = album_artists
         # if artists is always null, no album artists too,
         # use composer/performer
-        if artists == "":
+        if not artists:
             artists = performers
             album_artists = composers
-            if artists == "":
+            if not artists:
                 artists = album_artists
-            if artists == "":
+            if not artists:
                 artists = _("Unknown")
 
         Logger.debug("CollectionScanner::add2db(): Restore stats")
@@ -341,6 +343,13 @@ class CollectionScanner(GObject.GObject, TagReader):
 
         Logger.debug("CollectionScanner::add2db(): Add album: "
                      "%s, %s" % (album_name, album_artist_ids))
+
+        # FIXME: Cambiar por Logger.debug al terminar
+        Logger.debug(" =====> uri: {}; album_name: {}; mb_album_id: {}; "
+                     "album_artists: {}; album_artist_ids: {}".format(
+                       uri, album_name, mb_album_id, album_artists,
+                       album_artist_ids))
+
         (album_id, new_album) = self.add_album(album_name, mb_album_id,
                                                album_artist_ids,
                                                uri, loved, album_pop,

@@ -10,20 +10,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GObject, GLib, Gio, TotemPlParser
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
 
-from gettext import gettext as _
 import itertools
 import sqlite3
 from datetime import datetime
+from gettext import gettext as _
 from threading import Lock
 
+from gi.repository import Gio, GLib, GObject, TotemPlParser
 from lollypop.database import Database
 from lollypop.define import App, Type
-from lollypop.objects import Track
-from lollypop.logger import Logger
-from lollypop.sqlcursor import SqlCursor
 from lollypop.localized import LocalizedCollation
+from lollypop.logger import Logger
+from lollypop.objects import Track
+from lollypop.sqlcursor import SqlCursor
 
 
 class Playlists(GObject.GObject):
@@ -467,6 +468,10 @@ class Playlists(GObject.GObject):
         basename = ".".join(f.get_basename().split(".")[:-1])
         parser = TotemPlParser.Parser.new()
         playlist_id = self.get_id(basename)
+        Logger.debug(" ==> Importing playlist {} with basename {}. "
+                     "playlist_id: {}".format(f.get_path(),
+                                              basename,
+                                              playlist_id))
         # FIXME Why Type.NONE? Need to check old code
         if playlist_id == Type.NONE:
             playlist_id = self.add(basename)

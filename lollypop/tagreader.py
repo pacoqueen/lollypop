@@ -10,13 +10,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gst, GstPbutils, GLib, Gio
-
-from re import match
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
 
 from gettext import gettext as _
+from re import match
 
-from lollypop.define import App, ENCODING
+from gi.repository import Gio, GLib, Gst, GstPbutils
+from lollypop.define import ENCODING, App
 from lollypop.logger import Logger
 from lollypop.utils import format_artist_name
 

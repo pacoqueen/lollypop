@@ -10,6 +10,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
+
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gst", "1.0")

@@ -10,6 +10,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
+
 from gi.repository import Gtk, GLib, Gdk, Pango, GObject
 
 from gettext import gettext as _

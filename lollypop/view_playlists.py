@@ -10,6 +10,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
+
 from gi.repository import Gtk, GLib, Gdk, Gio
 
 from gettext import gettext as _
@@ -56,10 +58,10 @@ class PlaylistsView(View):
         else:
             split_button.hide()
 
-        if len(playlist_ids) > 1 or (
-           playlist_ids[0] < 0 and playlist_ids[0] not in [Type.LOVED,
-                                                           Type.NOPARTY]) or\
-                not editable:
+        if (len(playlist_ids) > 1 or
+            (playlist_ids[0] < 0 and
+             playlist_ids[0] not in [Type.LOVED, Type.NOPARTY]) or
+            not editable):
             self.__edit_button.hide()
 
         self.__playlists_widget = PlaylistsWidget(playlist_ids)
