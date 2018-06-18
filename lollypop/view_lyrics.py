@@ -97,6 +97,7 @@ class LyricsView(View, InfoController):
         """
         self.populate()
 
+    # pylint: disable=unused-argument
     def _close(self, button=None):
         """Destroy lyrics widget, returning to previows view."""
         self.destroy()
