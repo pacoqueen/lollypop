@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2014-2018 Cedric Bellegarde <cedric.bellegarde@adishatz.org>
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -10,17 +13,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gtk, GLib, Gio
+# (ↄ)2018 Some changes made by Francisco José Rodríguez Bogado <bogado@qinn.es>
+
+"""
+Show lyrics for a single track in a view widget.
+"""
 
 from gettext import gettext as _
-
-from lollypop.view import View
-from lollypop.define import App, WindowSize, Type
+from gi.repository import Gio, GLib, Gtk
 from lollypop.controllers import InfoController
-from lollypop.utils import escape
+from lollypop.define import App, Type, WindowSize
 from lollypop.helper_task import TaskHelper
+from lollypop.utils import escape, noaccents
+from lollypop.view import View
 
 
+# pylint: disable=too-many-instance-attributes
 class LyricsView(View, InfoController):
     """
         Show lyrics for track
@@ -42,6 +50,8 @@ class LyricsView(View, InfoController):
         builder.connect_signals(self)
         self._cover = builder.get_object("cover")
         self.__lyrics_label = builder.get_object("lyrics_label")
+        self._buttonback = builder.get_object("button_back")
+        self._buttonback.connect("clicked", self._close)
         self.add(builder.get_object("widget"))
         self.connect("size-allocate", self.__on_size_allocate)
 
@@ -62,8 +72,9 @@ class LyricsView(View, InfoController):
         lyrics = None
         reader = TagReader()
         try:
-            info = reader.get_info(self.__current_track.uri)
-        except:
+            info = reader.get_info(App().player.current_track.uri)
+        # pylint: disable=broad-except,unused-variable
+        except Exception as exceptinfo:
             info = None
         if info is not None:
             tags = info.get_tags()
@@ -85,6 +96,10 @@ class LyricsView(View, InfoController):
             @param player as Player
         """
         self.populate()
+
+    def _close(self, button=None):
+        """Destroy lyrics widget, returning to previows view."""
+        self.destroy()
 
 ############
 # PRIVATE  #
@@ -110,7 +125,7 @@ class LyricsView(View, InfoController):
                 False)
         else:
             artist = GLib.uri_escape_string(
-                App().player.current_track.name,
+                App().player.current_track.artists[0],
                 None,
                 False)
             title = GLib.uri_escape_string(
@@ -142,7 +157,9 @@ class LyricsView(View, InfoController):
             artist = App().player.current_track.artists[0]
             title = App().player.current_track.name
         string = escape("%s %s" % (artist, title))
+        string = noaccents(string)
         uri = "https://genius.com/%s-lyrics" % string.replace(" ", "-")
+        print("  ===================> url genius: {}".format(uri))
         task_helper.load_uri_content(
             uri,
             self.__cancellable,
@@ -176,6 +193,7 @@ class LyricsView(View, InfoController):
                             self.__current_height,
                             True)
 
+    # pylint: disable=unused-argument
     def __on_size_allocate(self, widget, allocation):
         """
             Update cover size
@@ -194,6 +212,7 @@ class LyricsView(View, InfoController):
         self.__size_allocate_timeout_id = GLib.idle_add(
             self.__handle_size_allocation)
 
+    # pylint: disable=too-many-arguments
     def __on_lyrics_downloaded(self, uri, status, data, cls, separator):
         """
             Show lyrics
@@ -214,7 +233,8 @@ class LyricsView(View, InfoController):
                     "div", class_=cls)[0].get_text(separator=separator)
                 self.__lyrics_label.set_text(lyrics_text)
                 self.__lyrics_set = True
-            except:
+            # pylint: disable=broad-except,unused-variable
+            except Exception as exceptiondl:
                 pass
         if not self.__lyrics_set and self.__downloads_running == 0:
             self.__lyrics_label.set_text(_("No lyrics found ") + "😐")

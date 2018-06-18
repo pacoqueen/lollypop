@@ -350,16 +350,34 @@ class TagReader(Discoverer):
             @parma tags as Gst.TagList
             @return lyrics as str
         """
-        def decode_lyrics(bytes):
+        def extract_lyrics(bufferbytes):
+            """
+            Extract lyrics in the strict way if legacy one does not work.
+            """
+            # http://id3.org/id3v2.4.0-frames
+            # USLT(encoding)(language)(descriptor)    (lyrics)
+            #      $xx       $xx xx xx textencoded $00 textencoded
+            eofield = b'\x00'
+            lyrics = [data for data in bufferbytes.split(eofield) if data][-1]
+            return lyrics
+
+        def decode_lyrics(bufferbytes):
             try:
                 lyrics = b""
-                if bytes[0:4] == b"TXXX":
-                    if bytes[13:24] == b"L\x00y\x00r\x00i\x00c\x00s":
-                        lyrics = bytes[29:].replace(b"\x00", b"")
+                if bufferbytes[0:4] == b"TXXX":
+                    if bufferbytes[13:24] == b"L\x00y\x00r\x00i\x00c\x00s":
+                        lyrics = bufferbytes[29:].replace(b"\x00", b"")
                     else:
                         return None
-                elif bytes[0:4] == b"USLT":
-                    lyrics = bytes.split(b"\xff\xfe")[2].replace(b"\x00", b"")
+                elif bufferbytes[0:4] == b"USLT":
+                    sep = b"\xff\xfe"
+                    fields = bufferbytes.split(sep)
+                    try:
+                        lyrics = fields[2]
+                    except IndexError:
+                        lyrics = extract_lyrics(bufferbytes)
+                    else:
+                        lyrics = lyrics.replace(b"\x00", b"")
                 else:
                     return None
                 for encoding in ENCODING:

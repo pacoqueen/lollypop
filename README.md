@@ -4,7 +4,7 @@
 
 Lollypop is a beautiful GNOME music playing application. It's like [GNOME Music](https://wiki.gnome.org/Apps/Music) on steroids.
 
-Forked from [mainstream repository](https://gitlab.gnome.org/World/lollypop) just to add two _must-have_ for me:
+Forked from [mainstream repository](https://gitlab.gnome.org/World/lollypop) {[`commit 9a9421c94950718a2a4b9995d2e9644897aa9994`](https://gitlab.gnome.org/World/lollypop/commit/9a9421c94950718a2a4b9995d2e9644897aa9994)} just to add two _must-have_ for me:
 
 1. Open containing directory of a song or album.
 
