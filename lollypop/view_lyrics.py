@@ -159,7 +159,6 @@ class LyricsView(View, InfoController):
         string = escape("%s %s" % (artist, title))
         string = noaccents(string)
         uri = "https://genius.com/%s-lyrics" % string.replace(" ", "-")
-        print("  ===================> url genius: {}".format(uri))
         task_helper.load_uri_content(
             uri,
             self.__cancellable,
