@@ -60,6 +60,7 @@ class AlbumsPopover(Gtk.Popover):
         self.__jump_button.connect("held", self.__on_jump_held)
         self.__jump_button.set_tooltip_text(
             _("Go to current track. Hold for jump to current artist"))
+        self.__jump_button.set_sensitive(App().player.albums)
         label = Gtk.Label.new("<b>" + _("Playing albums") + "</b>")
         label.set_use_markup(True)
         label.set_hexpand(True)
@@ -142,6 +143,8 @@ class AlbumsPopover(Gtk.Popover):
         self._stop = True
         GLib.idle_add(self.__view.clear, True)
         self.__clear_button.set_sensitive(False)
+        self.__jump_button.set_sensitive(False)
+        self.__save_button.set_sensitive(False)
 
     def __on_map(self, widget):
         """

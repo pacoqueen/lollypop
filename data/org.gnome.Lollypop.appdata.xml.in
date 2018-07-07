@@ -27,12 +27,18 @@
     </ul>
   </description>
   <releases>
-    <release version="0.9.513" date="2018-05-23">
+    <release version="0.9.518" date="2018-07-01">
       <description>
         <ul>
-          <li>Workaround a crash in Pango</li>
-          <li>Enable new encoders in MTP sync</li>
-          <li>Use Gtk.Gesture</li>
+          <li>Restore Next Popover</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.9.517" date="2018-06-29">
+      <description>
+        <ul>
+          <li>Bug fixes</li>
+          <li>Bye bye appmenu</li>
         </ul>
       </description>
     </release>
@@ -43,7 +49,7 @@
   </categories>
   <screenshots>
     <screenshot type="default">
-      <image type="source" width="800" height="439">https://gnumdk.github.io/lollypop-web/images/screenshot.jpg</image>
+      <image type="source" width="1920" height="1053">https://adishatz.org/lollypop.jpg</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://gnumdk.github.io/lollypop-web/</url>

@@ -36,7 +36,7 @@ except Exception as e:
     print("$ sudo pip3 install pylast")
     LastFM = None
 
-from lollypop.utils import is_gnome, is_unity, set_proxy_from_gnome
+from lollypop.utils import set_proxy_from_gnome
 from lollypop.utils import is_audio, is_pls
 from lollypop.define import Type, LOLLYPOP_DATA_PATH
 from lollypop.window import Window
@@ -195,10 +195,6 @@ class Application(Gtk.Application):
             dark = self.settings.get_value("dark-ui")
             settings.set_property("gtk-application-prefer-dark-theme", dark)
 
-        # Map some settings to actions
-        self.add_action(self.settings.create_action("playback"))
-        self.add_action(self.settings.create_action("shuffle"))
-
     def do_startup(self):
         """
             Init application
@@ -207,14 +203,9 @@ class Application(Gtk.Application):
 
         if self.window is None:
             self.init()
-            menu = self.__setup_app_menu()
-            # If GNOME/Unity, add appmenu
-            if is_gnome() or is_unity():
-                self.set_app_menu(menu)
+            menu = self.__get_application_menu()
             self.window = Window()
-            # If not GNOME/Unity add menu to toolbar
-            if not is_gnome() and not is_unity():
-                self.window.setup_menu(menu)
+            self.window.toolbar.end.setup_menu(menu)
             self.window.connect("delete-event", self.__hide_on_delete)
             self.window.show()
             self.player.restore_state()
@@ -527,7 +518,7 @@ class Application(Gtk.Application):
         """
         dialog.destroy()
 
-    def __setup_app_menu(self):
+    def __get_application_menu(self):
         """
             Setup application menu
             @return menu as Gio.Menu

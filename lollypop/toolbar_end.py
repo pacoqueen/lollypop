@@ -15,90 +15,7 @@ from gi.repository import Gtk, Gio, GLib
 from gettext import gettext as _
 
 from lollypop.pop_next import NextPopover
-from lollypop.define import App, Shuffle, Type, NextContext
-
-
-class PartyPopover(Gtk.Popover):
-    """
-        Show party options
-    """
-
-    def __init__(self):
-        """
-            Init popover
-        """
-        Gtk.Popover.__init__(self)
-
-        party_grid = Gtk.Grid()
-        party_grid.set_property("margin-start", 10)
-        party_grid.set_property("margin-end", 10)
-        party_grid.set_property("margin-bottom", 5)
-        party_grid.set_property("margin-top", 5)
-        party_grid.set_column_spacing(10)
-        party_grid.set_row_spacing(7)
-        party_grid.show()
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scrolled.add(party_grid)
-        scrolled.show()
-        self.add(scrolled)
-        size = App().window.get_size()
-        self.set_size_request(-1,
-                              size[1] * 0.6)
-
-        genres = App().genres.get()
-        genres.insert(0, (Type.POPULARS, _("Populars")))
-        genres.insert(1, (Type.RECENTS, _("Recently added")))
-        ids = App().player.get_party_ids()
-        i = 0
-        x = 0
-        for genre_id, genre in genres:
-            label = Gtk.Label()
-            label.set_property("halign", Gtk.Align.START)
-            # Hack as ellipsize not working as I want, help welcome ;)
-            label_text = genre[0:20]
-            if len(label_text) != len(genre):
-                label_text += "..."
-            label.set_text(label_text)
-            label.set_tooltip_text(genre)
-            label.show()
-            switch = Gtk.Switch()
-            if genre_id in ids:
-                switch.set_state(True)
-            switch.connect("state-set", self.__on_switch_state_set, genre_id)
-            switch.show()
-            party_grid.attach(label, x, i, 1, 1)
-            party_grid.attach(switch, x + 1, i, 1, 1)
-            if x == 0:
-                x += 2
-            else:
-                label.set_property("margin-start", 15)
-                i += 1
-                x = 0
-
-#######################
-# PRIVATE             #
-#######################
-    def __on_switch_state_set(self, widget, state, genre_id):
-        """
-            Update party ids when use change a switch in dialog
-            @param widget as Gtk.Switch
-            @param state as bool, genre id as int
-        """
-        ids = App().player.get_party_ids()
-        if state:
-            try:
-                ids.append(genre_id)
-            except:
-                pass
-        else:
-            try:
-                ids.remove(genre_id)
-            except:
-                pass
-        App().settings.set_value("party-ids", GLib.Variant("ai", ids))
-        App().player.set_party_ids()
-        App().player.set_next()
+from lollypop.define import App, Shuffle, NextContext
 
 
 class ToolbarEnd(Gtk.Bin):
@@ -111,8 +28,6 @@ class ToolbarEnd(Gtk.Bin):
             Init toolbar
         """
         Gtk.Bin.__init__(self)
-        self.connect("show", self.__on_show)
-        self.connect("hide", self.__on_hide)
         self.set_hexpand(True)
         self.__search = None
         self.__timeout_id = None
@@ -120,24 +35,45 @@ class ToolbarEnd(Gtk.Bin):
         builder.add_from_resource("/org/gnome/Lollypop/ToolbarEnd.ui")
         builder.connect_signals(self)
 
+        self.__party_submenu = builder.get_object("party_submenu")
         self.add(builder.get_object("end"))
+
+        # Map some settings to actions, can't use Gio.Settings.create_action()
+        # because API does not support set_enabled()
+        self.__shuffle_action = Gio.SimpleAction.new_stateful(
+            "shuffle",
+            GLib.VariantType.new("s"),
+            GLib.Variant("s", "none"))
+        self.__shuffle_action.connect("change-state",
+                                      self.__on_shuffle_change_state)
+        self.__playback_action = Gio.SimpleAction.new_stateful(
+            "playback",
+            GLib.VariantType.new("s"),
+            GLib.Variant("s", "none"))
+        self.__playback_action.connect("change-state",
+                                       self.__on_playback_change_state)
+        App().add_action(self.__shuffle_action)
+        App().add_action(self.__playback_action)
 
         self.__shuffle_button = builder.get_object("shuffle-button")
         self.__shuffle_image = builder.get_object("shuffle-button-image")
-        shuffleAction = Gio.SimpleAction.new("shuffle-button", None)
-        shuffleAction.connect("activate", self.__activate_shuffle_button)
-        App().add_action(shuffleAction)
+        shuffle_button_action = Gio.SimpleAction.new("shuffle-button", None)
+        shuffle_button_action.connect("activate",
+                                      self.__on_shuffle_button_activate)
+        App().add_action(shuffle_button_action)
         App().set_accels_for_action("app.shuffle-button", ["<Control>r"])
         App().settings.connect("changed::shuffle", self.__on_playback_changed)
         App().settings.connect("changed::playback", self.__on_playback_changed)
 
-        self.__party_button = builder.get_object("party-button")
-        party_action = Gio.SimpleAction.new("party", None)
-        party_action.connect("activate", self.__activate_party_button)
+        party_action = Gio.SimpleAction.new_stateful(
+            "party",
+            None,
+            GLib.Variant.new_boolean(App().player.is_party))
+        party_action.connect("change-state", self.__on_party_mode_change_state)
         App().add_action(party_action)
         App().set_accels_for_action("app.party", ["<Control>p"])
         self.__next_popover = NextPopover()
-        self.__next_popover.set_relative_to(self.__party_button)
+        self.__next_popover.set_relative_to(self.__shuffle_button)
 
         self.__search_button = builder.get_object("search-button")
         self.__gesture = Gtk.GestureLongPress.new(self.__search_button)
@@ -157,8 +93,15 @@ class ToolbarEnd(Gtk.Bin):
         self.__list_button.connect("query-tooltip",
                                    self.__on_list_button_query_tooltip)
         self.__list_popover = None
-        App().player.connect("party-changed", self.__on_party_changed)
         App().player.connect("lock-changed", self.__on_lock_changed)
+
+    def do_show(self):
+        self.__set_shuffle_icon()
+        Gtk.Bin.do_show(self)
+
+    def do_hide(self):
+        self.__next_popover.hide()
+        Gtk.Bin.do_hide(self)
 
     def set_minimal(self, b):
         """
@@ -178,18 +121,7 @@ class ToolbarEnd(Gtk.Bin):
             Add an application menu to menu button
             @parma: menu as Gio.Menu
         """
-        self.__settings_button.show()
         self.__settings_button.set_menu_model(menu)
-
-    def on_status_changed(self, player):
-        """
-            Update buttons on status changed
-            @param player as Player
-        """
-        if player.is_playing:
-            # Party mode can be activated
-            # via Fullscreen class, so check button state
-            self.__party_button.set_active(player.is_party)
 
     def on_next_changed(self, player):
         """
@@ -239,35 +171,6 @@ class ToolbarEnd(Gtk.Bin):
 #######################
 # PROTECTED           #
 #######################
-    def _on_party_button_toggled(self, button):
-        """
-            Set party mode on if party button active
-            @param obj as Gtk.button
-        """
-        active = self.__party_button.get_active()
-        self.__shuffle_button.set_sensitive(not active)
-        if not App().gtk_application_prefer_dark_theme and\
-                not App().settings.get_value("dark-ui"):
-            settings = Gtk.Settings.get_default()
-            settings.set_property("gtk-application-prefer-dark-theme", active)
-        App().player.set_party(active)
-        self.on_next_changed(App().player)
-
-    def _on_party_press_event(self, eventbox, event):
-        """
-            Show party popover
-            @param eventbox as Gtk.EventBox
-            @param event as Gdk.Event
-        """
-        if event.button == 3:
-            popover = PartyPopover()
-            popover.set_relative_to(eventbox)
-            self.__next_popover.hide()
-            popover.connect("closed", self.__on_popover_closed)
-            self.__next_popover.inhibit(True)
-            popover.show()
-            return True
-
     def _on_list_button_clicked(self, widget, unused=None):
         """
             Show current playback context popover
@@ -281,9 +184,107 @@ class ToolbarEnd(Gtk.Bin):
         self.__list_popover.connect("closed", self.__on_list_popover_closed)
         return True
 
+    def _on_shuffle_button_toggled(self, button):
+        """
+           Create submenu
+           @param button as Gtk.MenuButton
+        """
+        if button.get_active():
+            # Create submenu "Configure party mode"
+            self.__party_submenu.remove_all()
+            self.__init_party_submenu()
+            self.__next_popover.hide()
+            self.__next_popover.inhibit(True)
+        else:
+            self.__next_popover.inhibit(False)
+            if self.__next_popover.should_be_shown():
+                self.__next_popover.show()
+
+    def _on_settings_button_toggled(self, button):
+        """
+           Create submenu
+           @param button as Gtk.MenuButton
+        """
+        if button.get_active():
+            self.__next_popover.hide()
+            self.__next_popover.inhibit(True)
+        else:
+            self.__next_popover.inhibit(False)
+            if self.__next_popover.should_be_shown():
+                self.__next_popover.show()
+
 #######################
 # PRIVATE             #
 #######################
+    def __init_party_submenu(self):
+        """
+            Init party submenu with current ids
+        """
+        def on_change_state(action, value, genre_id):
+            action.set_state(value)
+            ids = App().player.get_party_ids()
+            genre_ids = App().genres.get_ids()
+            # Select all
+            if genre_id is None:
+                # Update others
+                for genre_id in genre_ids:
+                    action = App().lookup_action("genre_%s" % genre_id)
+                    if action.get_state() != value:
+                        action.set_state(value)
+                if value:
+                    ids = []
+                else:
+                    ids = App().genres.get_ids()
+            # Party id added
+            elif value:
+                ids.append(genre_id)
+            # Party id removed
+            elif ids and len(party_ids) > 1:
+                ids.remove(genre_id)
+            # Initial value
+            else:
+                genre_ids.remove(genre_id)
+            App().settings.set_value("party-ids", GLib.Variant("ai", ids))
+            App().player.set_party_ids()
+            App().player.set_next()
+
+        party_ids = App().settings.get_value("party-ids")
+        all_ids = App().genres.get_ids()
+        all_selected = len(set(all_ids) & set(party_ids)) == len(all_ids) or\
+            not party_ids
+        action = Gio.SimpleAction.new_stateful(
+                    "all_party_ids",
+                    None,
+                    GLib.Variant.new_boolean(all_selected))
+        action.connect("change-state", on_change_state, None)
+        App().add_action(action)
+        item = Gio.MenuItem.new(_("All genres"), "app.all_party_ids")
+        self.__party_submenu.append_item(item)
+        i = 0
+        # Hack, hack, hack
+        submenu_name = _("Next")
+        menu = self.__party_submenu
+        for (genre_id, name) in App().genres.get():
+            in_party_ids = not party_ids or genre_id in party_ids
+            action_name = "genre_%s" % genre_id
+            action = Gio.SimpleAction.new_stateful(
+                action_name,
+                None,
+                GLib.Variant.new_boolean(in_party_ids))
+            action.connect("change-state", on_change_state, genre_id)
+            App().add_action(action)
+            item = Gio.MenuItem.new(name, "app.%s" % action_name)
+            menu.append_item(item)
+            if i > 10:
+                submenu = Gio.Menu()
+                item = Gio.MenuItem.new(submenu_name, None)
+                submenu_name += " "
+                item.set_submenu(submenu)
+                menu.append_item(item)
+                menu = submenu
+                i = 0
+            i += 1
+
     def __on_search_button_pressed(self, gesture, x, y):
         """
             Show filtering
@@ -308,7 +309,7 @@ class ToolbarEnd(Gtk.Bin):
         self.__search.set_relative_to(self.__search_button)
         self.__search.show()
 
-    def __set_icon(self):
+    def __set_shuffle_icon(self):
         """
             Set shuffle icon
         """
@@ -339,16 +340,41 @@ class ToolbarEnd(Gtk.Bin):
                 self.__shuffle_image.get_style_context().remove_class(
                     "selected")
 
-    def __activate_party_button(self, action=None, param=None):
+    def __on_party_mode_change_state(self, action, value):
         """
-            Activate party button
+            Activate party mode
             @param action as Gio.SimpleAction
-            @param param as GLib.Variant
+            @param value as bool
         """
-        self.__party_button.set_active(not self.__party_button.get_active())
-        App().window.responsive_design()
+        if not App().gtk_application_prefer_dark_theme and\
+                not App().settings.get_value("dark-ui"):
+            settings = Gtk.Settings.get_default()
+            settings.set_property("gtk-application-prefer-dark-theme", value)
+        App().player.set_party(value)
+        action.set_state(value)
+        self.__shuffle_action.set_enabled(not value)
+        self.__playback_action.set_enabled(not value)
+        self.on_next_changed(App().player)
 
-    def __activate_shuffle_button(self, action=None, param=None):
+    def __on_shuffle_change_state(self, action, value):
+        """
+            Update shuffle setting
+            @param action as Gio.SimpleAction
+            @param value as bool
+        """
+        App().settings.set_value("shuffle", value)
+        action.set_state(value)
+
+    def __on_playback_change_state(self, action, value):
+        """
+            Update playback setting
+            @param action as Gio.SimpleAction
+            @param value as bool
+        """
+        App().settings.set_value("playback", value)
+        action.set_state(value)
+
+    def __on_shuffle_button_activate(self, action, param):
         """
             Activate shuffle button
             @param action as Gio.SimpleAction
@@ -371,17 +397,8 @@ class ToolbarEnd(Gtk.Bin):
             Update shuffle icon
             @param settings as Gio.Settings, value as str
         """
-        self.__set_icon()
+        self.__set_shuffle_icon()
         self.__next_popover.hide()
-
-    def __on_party_changed(self, player, is_party):
-        """
-            On party change, sync toolbar
-            @param player as Player
-            @param is party as bool
-        """
-        if self.__party_button.get_active() != is_party:
-            self.__activate_party_button()
 
     def __on_list_popover_closed(self, popover):
         """
@@ -399,20 +416,6 @@ class ToolbarEnd(Gtk.Bin):
         self.__next_popover.inhibit(False)
         if self.__next_popover.should_be_shown():
             self.__next_popover.show()
-
-    def __on_show(self, widget):
-        """
-            Show popover if needed
-            @param widget as Gtk.Widget
-        """
-        self.__set_icon()
-
-    def __on_hide(self, widget):
-        """
-            Hide popover
-            @param widget as Gtk.Widget
-        """
-        self.__next_popover.hide()
 
     def __on_list_button_query_tooltip(self, widget, x, y, keyboard, tooltip):
         """

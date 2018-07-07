@@ -55,10 +55,12 @@ class LyricsView(View, InfoController):
         self.add(builder.get_object("widget"))
         self.connect("size-allocate", self.__on_size_allocate)
 
-    def populate(self):
+    def populate(self, track):
         """
             Set lyrics
+            @param track as Track
         """
+        self.__current_track = track
         self.update_artwork(self.__current_width,
                             self.__current_height,
                             True)
@@ -95,7 +97,7 @@ class LyricsView(View, InfoController):
             Update lyrics
             @param player as Player
         """
-        self.populate()
+        self.populate(App().player.current_track)
 
     # pylint: disable=unused-argument
     def _close(self, button=None):
@@ -112,8 +114,8 @@ class LyricsView(View, InfoController):
         self.__downloads_running += 1
         # Update lyrics
         task_helper = TaskHelper()
-        if App().player.current_track.id == Type.RADIOS:
-            split = App().player.current_track.name.split(" - ")
+        if self.__current_track.id == Type.RADIOS:
+            split = self.__current_track.name.split(" - ")
             if len(split) < 2:
                 return
             artist = GLib.uri_escape_string(
@@ -126,11 +128,11 @@ class LyricsView(View, InfoController):
                 False)
         else:
             artist = GLib.uri_escape_string(
-                App().player.current_track.artists[0],
+                self.__current_track.name,
                 None,
                 False)
             title = GLib.uri_escape_string(
-                App().player.current_track.name,
+                self.__current_track.name,
                 None,
                 False)
         uri = "http://lyrics.wikia.com/wiki/%s:%s" % (artist, title)
@@ -148,15 +150,15 @@ class LyricsView(View, InfoController):
         self.__downloads_running += 1
         # Update lyrics
         task_helper = TaskHelper()
-        if App().player.current_track.id == Type.RADIOS:
+        if self.__current_track.id == Type.RADIOS:
             split = App().player.current_track.name.split(" - ")
             if len(split) < 2:
                 return
             artist = split[0]
             title = split[1]
         else:
-            artist = App().player.current_track.artists[0]
-            title = App().player.current_track.name
+            artist = self.__current_track.artists[0]
+            title = self.__current_track.name
         string = escape("%s %s" % (artist, title))
         string = noaccents(string)
         uri = "https://genius.com/%s-lyrics" % string.replace(" ", "-")

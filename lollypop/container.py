@@ -113,18 +113,20 @@ class Container(Gtk.Overlay):
             GLib.Variant("ai",
                          self.__list_two.selected_ids))
 
-    def show_lyrics(self):
+    def show_lyrics(self, track=None):
         """
             Show lyrics for track
+            @pram track as Track
         """
         from lollypop.view_lyrics import LyricsView
         current = self.__stack.get_visible_child()
         view = LyricsView()
-        view.populate()
+        view.populate(track or App().player.current_track)
         view.show()
         self.__stack.add(view)
         self.__stack.set_visible_child(view)
-        current.disable_overlay()
+        if hasattr(current, "disable_overlay"):
+            current.disable_overlay()
 
     def show_playlist_manager(self, object):
         """
@@ -237,6 +239,9 @@ class Container(Gtk.Overlay):
             Show albums from artists
             @param artist id as int
         """
+        def select_list_two(selection_list, artist_ids):
+            GLib.idle_add(self.__list_two.select_ids, artist_ids)
+            self.__list_two.disconnect_by_func(select_list_two)
         GLib.idle_add(self.__list_one.select_ids, [])
         GLib.idle_add(self.__list_two.select_ids, [])
         if App().settings.get_value("show-genres"):
@@ -249,9 +254,8 @@ class Container(Gtk.Overlay):
                         if genre_id not in genre_ids:
                             genre_ids.append(genre_id)
             # Select genres on list one
+            self.__list_two.connect("populated", select_list_two, artist_ids)
             GLib.idle_add(self.__list_one.select_ids, genre_ids)
-            # Select artists on list two
-            GLib.idle_add(self.__list_two.select_ids, artist_ids)
         else:
             # Select artists on list one
             GLib.idle_add(self.__list_one.select_ids, artist_ids)
@@ -801,7 +805,7 @@ class Container(Gtk.Overlay):
         if selected_ids[0] == Type.PLAYLISTS:
             self.__update_list_playlists(False)
             self.__list_two.show()
-        elif selected_ids[0] > 0 and\
+        elif (selected_ids[0] > 0 or selected_ids[0] == Type.ALL) and\
                 self.__list_one.type & SelectionList.Type.GENRE:
             self.__update_list_artists(self.__list_two, selected_ids, False)
             self.__list_two.show()

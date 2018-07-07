@@ -99,13 +99,6 @@ class Toolbar(Gtk.HeaderBar):
         if not self.__toolbar_title._show_volume_control:
             self.__toolbar_title._update_position(value)
 
-    def setup_menu(self, menu):
-        """
-            Add an application menu to menu button
-            @parma: menu as Gio.Menu
-        """
-        self.__toolbar_end.setup_menu(menu)
-
     def set_mark(self):
         """
             Mark toolbar with previously saved position
@@ -193,4 +186,3 @@ class Toolbar(Gtk.HeaderBar):
         """
         self.__toolbar_playback.on_status_changed(player)
         self.__toolbar_title.on_status_changed(player)
-        self.__toolbar_end.on_status_changed(player)

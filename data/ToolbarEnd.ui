@@ -4,6 +4,16 @@
   <requires lib="gtk+" version="3.10"/>
     <menu id="shuffle-menu">
         <section>
+            <attribute name="label" translatable="yes">Party mode</attribute>
+            <item>
+              <attribute name="label" translatable="yes">Enable party mode</attribute>
+              <attribute name="action">app.party</attribute>
+            </item>
+            <submenu id="party_submenu">
+                <attribute name="label">Configure</attribute>
+            </submenu>
+        </section>
+        <section>
             <attribute name="label" translatable="yes">Shuffle</attribute>
             <item>
               <attribute name="label" translatable="yes">No shuffle</attribute>
@@ -48,9 +58,10 @@
     <child>
       <object class="GtkMenuButton" id="settings-button">
         <property name="can_focus">True</property>
+	<property name="visible">True</property>
         <property name="receives_default">True</property>
-        <property name="tooltip_text" translatable="yes">Settings</property>
         <property name="valign">center</property>
+        <signal name="toggled" handler="_on_settings_button_toggled" swapped="no"/>
         <child>
           <object class="GtkImage" id="settings-button-image">
             <property name="visible">True</property>
@@ -78,8 +89,9 @@
         <property name="visible">True</property>
         <property name="can_focus">True</property>
         <property name="receives_default">True</property>
-        <property name="tooltip_text" translatable="yes">Playback</property>
+        <property name="tooltip_text" translatable="yes">Playback type</property>
         <property name="menu_model">shuffle-menu</property>
+        <signal name="toggled" handler="_on_shuffle_button_toggled" swapped="no"/>
         <child>
           <object class="GtkImage" id="shuffle-button-image">
             <property name="visible">True</property>
@@ -96,40 +108,6 @@
         <property name="fill">True</property>
         <property name="pack_type">end</property>
         <property name="position">1</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkEventBox">
-        <property name="visible">True</property>
-        <property name="can_focus">False</property>
-        <signal name="button-press-event" handler="_on_party_press_event" swapped="no"/>
-        <child>
-          <object class="GtkToggleButton" id="party-button">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <property name="tooltip_text" translatable="yes">Party mode
-Right click to filter</property>
-            <signal name="toggled" handler="_on_party_button_toggled" swapped="no"/>
-            <child>
-              <object class="GtkImage" id="party-button-image">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="icon_name">emblem-music-symbolic</property>
-                <property name="icon_size">1</property>
-              </object>
-            </child>
-            <style>
-              <class name="image-button"/>
-            </style>
-          </object>
-        </child>
-      </object>
-    <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="pack_type">end</property>
-        <property name="position">2</property>
       </packing>
     </child>
     <child>

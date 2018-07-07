@@ -344,7 +344,6 @@ class CollectionScanner(GObject.GObject, TagReader):
         Logger.debug("CollectionScanner::add2db(): Add album: "
                      "%s, %s" % (album_name, album_artist_ids))
 
-        # FIXME: Cambiar por Logger.debug al terminar
         Logger.debug(" =====> uri: {}; album_name: {}; mb_album_id: {}; "
                      "album_artists: {}; album_artist_ids: {}".format(
                        uri, album_name, mb_album_id, album_artists,

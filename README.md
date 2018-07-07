@@ -4,13 +4,15 @@
 
 Lollypop is a beautiful GNOME music playing application. It's like [GNOME Music](https://wiki.gnome.org/Apps/Music) on steroids.
 
-Forked from [mainstream repository](https://gitlab.gnome.org/World/lollypop) {[`commit 9a9421c94950718a2a4b9995d2e9644897aa9994`](https://gitlab.gnome.org/World/lollypop/commit/9a9421c94950718a2a4b9995d2e9644897aa9994)} just to add two _must-have_ for me:
+Forked from [mainstream repository](https://gitlab.gnome.org/World/lollypop) {[`commit e9e8eda9c635e4afe756e07aa5e28ac5eba30470`](https://gitlab.gnome.org/World/lollypop/commit/9e8eda9c635e4afe756e07aa5e28ac5eba30470)} just to add a couple _must-have_ for me:
+
+0. (_bonus track_) Remove donation banner.
 
 1. Open containing directory of a song or album.
 
 2. Jump to currently playing artist.
 
-3. (_bonus track_) Remove donation banner.
+3. Back button in lyrics view.
 
 You —probably— don't want to install this version. Go to the [official and most updated](https://gitlab.gnome.org/World/lollypop) one instead.
 
